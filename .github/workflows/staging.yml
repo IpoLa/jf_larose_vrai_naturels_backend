@@ -1,0 +1,49 @@
+name: 🚀 Deploy JF LAROSE les vrais naturels
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  web-deploy:
+    name: 🎉 Deploy to FTP Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🚚 Get latest code
+        uses: actions/checkout@v4
+
+      # 🧽 Remove empty files to prevent FTPS timeout
+      - name: 🧹 Clean empty files
+        run: |
+          find . -type f -empty -print -delete
+
+      - name: 📂 Sync files via FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.FTP_SERVER_PRE }}
+          username: ${{ secrets.FTP_USERNAME_PRE }}
+          password: ${{ secrets.FTP_PASSWORD_PRE }}
+          protocol: ftps
+          port: 21
+          passive: true
+          security: loose
+          timeout: 300000
+          keepalive: 15000
+          max-connections: 2
+          retries: 5
+          retry-delay: 15s
+          state-name: .ftp-deploy-sync-state.json
+          dangerous-clean-slate: false
+          log-level: verbose
+          exclude: |
+            **/.git*
+            **/node_modules/**
+            **/.env
+            **/.DS_Store
+            **/.vscode/**
+            **/.idea/**
+            **/README.md
+            **/Thumbs.db
+            **/.ftp-deploy-sync-state.json

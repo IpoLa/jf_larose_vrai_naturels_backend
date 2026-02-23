@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String   @id @default(uuid())
+  phone        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  role         String   @default("admin")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("admin_users")
+}
+
+model Pharmacy {
+  id        String   @id @default(uuid())
+  name      String
+  address   String?
+  phone     String?
+  region    String?
+  status    String   @default("active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  vendors   Vendor[]
+
+  @@map("pharmacies")
+}
+
+model Vendor {
+  id                 String          @id @default(uuid())
+  uniqueCardNumber   String          @unique @map("unique_card_number")
+  name               String?
+  email              String?
+  phone              String?
+  ccp                String?
+  ccpKey             String?         @map("ccp_key")
+  rip                String?
+  pharmacyId         String?         @map("pharmacy_id")
+  status             String          @default("active")
+  actionDate         DateTime        @default(now()) @map("action_date")
+  registrationBonus  Boolean         @default(false) @map("registration_bonus")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+  pharmacy           Pharmacy?       @relation(fields: [pharmacyId], references: [id])
+  sales              Sale[]
+  paymentPeriods     PaymentPeriod[]
+  qrCodes            QrCode[]
+
+  @@map("vendors")
+}
+
+model Product {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  slug         String   @unique
+  indication   String
+  description  String?
+  argumentKey  String?  @map("argument_key")
+  whyItWorks   String?  @map("why_it_works")
+  imageUrl     String?  @map("image_url")
+  isActive     Boolean  @default(true) @map("is_active")
+  sortOrder    Int      @default(0) @map("sort_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  sales        Sale[]
+
+  @@map("products")
+}
+
+model Sale {
+  id          String         @id @default(uuid())
+  vendorId    String         @map("vendor_id")
+  productId   String?        @map("product_id")
+  productName String         @map("product_name")
+  quantity    Int
+  unitPrice   Float          @default(0) @map("unit_price")
+  saleDate    DateTime       @default(now()) @map("sale_date")
+  periodId    String?        @map("period_id")
+  vendor      Vendor         @relation(fields: [vendorId], references: [id])
+  product     Product?       @relation(fields: [productId], references: [id])
+  period      PaymentPeriod? @relation(fields: [periodId], references: [id])
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  @@map("sales")
+}
+
+model PaymentPeriod {
+  id              String    @id @default(uuid())
+  vendorId        String    @map("vendor_id")
+  periodType      String    @map("period_type")
+  startDate       DateTime  @map("start_date")
+  endDate         DateTime  @map("end_date")
+  totalSales      Int       @default(0) @map("total_sales")
+  totalCommission Float     @default(0) @map("total_commission")
+  status          String    @default("pending")
+  paidAt          DateTime? @map("paid_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  vendor          Vendor    @relation(fields: [vendorId], references: [id])
+  sales           Sale[]
+
+  @@map("payment_periods")
+}
+
+model CommissionRule {
+  id                   String   @id @default(uuid())
+  periodType           String   @map("period_type")
+  quantityFrom         Int      @map("quantity_from")
+  quantityTo           Int?     @map("quantity_to")
+  commissionPerProduct Float    @map("commission_per_product")
+  bonusPerProduct      Float    @default(0) @map("bonus_per_product")
+  label                String?
+  isActive             Boolean  @default(true) @map("is_active")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@map("commission_rules")
+}
+
+model QrCode {
+  id           String   @id @default(uuid())
+  vendorId     String   @map("vendor_id")
+  uniqueKey    String   @unique @map("unique_key")
+  qrUrl        String   @map("qr_url")
+  qrImageData  String?  @map("qr_image_data")
+  generatedAt  DateTime @default(now()) @map("generated_at")
+  isActive     Boolean  @default(true) @map("is_active")
+  vendor       Vendor   @relation(fields: [vendorId], references: [id])
+
+  @@map("qr_codes")
+}
