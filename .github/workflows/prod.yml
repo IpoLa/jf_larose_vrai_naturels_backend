@@ -1,4 +1,68 @@
-name: prod.yml
+name: Backend JF LAROSE NATURELS - Production (main → prod)
+
 on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend/**'
 
 jobs:
+  build-and-deploy:
+    name: Build & Deploy Backend → Production FTP
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: 🛎 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: 📦 Install dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: 🔨 Build
+        working-directory: ./backend
+        run: npm run build
+
+      - name: 🧪 Prisma Generate
+        working-directory: ./backend
+        run: npm run prisma:generate
+
+      - name: 🧹 Clean empty files
+        run: find backend/dist -type f -empty -delete
+
+      - name: 🚀 Deploy to Production FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.FTP_SERVER_PROD }}
+          username: ${{ secrets.FTP_USERNAME_PROD }}
+          password: ${{ secrets.FTP_PASSWORD_PROD }}
+          protocol: ftps
+          port: 21
+          local-dir: ./backend/dist/
+          server-dir: /backend/les-vrais-naturels-backend/
+          passive: true
+          security: loose
+          timeout: 300000
+          keepalive: 15000
+          max-connections: 2
+          retries: 5
+          retry-delay: 15s
+          state-name: .ftp-deploy-sync-state-backend-prod.json
+          exclude: |
+            **/.git*
+            **/.env*
+            **/node_modules/**
+            **/.DS_Store
