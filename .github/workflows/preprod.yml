@@ -32,15 +32,15 @@ jobs:
       - name: Prisma Generate
         run: npx prisma generate
 
-      - name: Prisma Migrate (deploy)
-        env:
-          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-        run: npx prisma migrate deploy
-
-      - name: Prisma Seed
-        env:
-          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-        run: npm run prisma:seed
+#      - name: Prisma Migrate (deploy)
+#        env:
+#          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+#        run: npx prisma migrate deploy
+#
+#      - name: Prisma Seed
+#        env:
+#          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+#        run: npm run prisma:seed
 
       - name: Clean empty files
         run: find dist -type f -empty -delete || true
