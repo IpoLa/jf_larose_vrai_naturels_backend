@@ -17,6 +17,7 @@ jobs:
       - name: 🛎 Checkout
         uses: actions/checkout@v4
 
+
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -47,6 +48,7 @@ jobs:
 
       - name: 🧹 Clean empty files (avoid FTPS timeout)
         run: find backend/dist -type f -empty -delete
+
 
       - name: 🚀 Deploy to Preprod FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
