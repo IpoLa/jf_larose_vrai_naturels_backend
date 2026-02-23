@@ -79,6 +79,7 @@ export class DeleguesController {
   @ApiOperation({ summary: 'Stats des régions du délégué' })
   async regionStats(@Param('id') id: string) {
     const d = await this.service.findOne(id);
+    // @ts-ignore
     return this.service.getRegionStats(d.region || []);
   }
 }

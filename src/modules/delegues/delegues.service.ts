@@ -1,4 +1,6 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+// src/modules/delegues/delegues.service.ts
+
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as QRCode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
@@ -29,8 +31,15 @@ export class DeleguesService {
     ) {}
 
     async findAll(region?: string) {
+        // For MySQL + Prisma: use Json filter syntax (array_contains)
         return this.prisma.delegue.findMany({
-            where: region ? { region: { has: region } } : undefined,
+            where: region
+                ? {
+                    region: {
+                        array_contains: [region],
+                    },
+                }
+                : undefined,
             include: {
                 qrCodes: { where: { isActive: true }, take: 1 },
                 _count: { select: { notifications: true } },
@@ -65,7 +74,7 @@ export class DeleguesService {
                 name: dto.name,
                 email: dto.email,
                 phone: dto.phone,
-                region: dto.region || [],
+                region: dto.region || [], // Prisma will store as Json array
                 sector: dto.sector,
                 qrCodes: {
                     create: { uniqueKey, qrUrl, qrImageData, isActive: true },
@@ -115,7 +124,6 @@ export class DeleguesService {
         return qr;
     }
 
-    /** Stats that a delegue can see for their regions */
     async getRegionStats(regions: string[]) {
         if (!regions?.length) throw new BadRequestException('Aucune région assignée');
 
@@ -152,8 +160,8 @@ export class DeleguesService {
                 name: v.name,
                 phone: v.phone,
                 pharmacyName: v.pharmacy?.name,
-                pendingCommission: v.paymentPeriods.reduce((s, p) => s + p.totalCommission, 0),
-                periodSales: v.paymentPeriods.reduce((s, p) => s + p.totalSales, 0),
+                pendingCommission: v.paymentPeriods.reduce((s, p) => s + (p.totalCommission || 0), 0),
+                periodSales: v.paymentPeriods.reduce((s, p) => s + (p.totalSales || 0), 0),
             })),
             pharmacies,
         };

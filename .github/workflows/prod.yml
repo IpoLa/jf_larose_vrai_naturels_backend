@@ -1,4 +1,4 @@
-name: Backend JF LAROSE NATURELS - Production (main → prod)
+name: Backend - Production (main → prod)
 
 on:
   push:
@@ -6,44 +6,49 @@ on:
       - main
       - master
     tags:
-      - 'v*'
-    paths:
-      - 'backend/**'
-      - '.github/workflows/backend/**'
+      - 'v*.*.*'
 
 jobs:
   build-and-deploy:
-    name: Build & Deploy Backend → Production FTP
+    name: Build → Prisma → Deploy to Production FTP
     runs-on: ubuntu-latest
     environment: production
 
     steps:
-      - name: 🛎 Checkout
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: 🟢 Setup Node.js
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: package-lock.json
 
-      - name: 📦 Install dependencies
-        working-directory: ./backend
+      - name: Install dependencies
         run: npm ci
 
-      - name: 🔨 Build
-        working-directory: ./backend
+      - name: Build
         run: npm run build
 
-      - name: 🧪 Prisma Generate
-        working-directory: ./backend
-        run: npm run prisma:generate
+      - name: Prisma Generate
+        run: npx prisma generate
 
-      - name: 🧹 Clean empty files
-        run: find backend/dist -type f -empty -delete
+      - name: Prisma Migrate (deploy)
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        run: npx prisma migrate deploy
 
-      - name: 🚀 Deploy to Production FTP
+      - name: Prisma Seed (optional - often skipped in prod)
+        if: false   # ← usually disabled in production - remove if you want it
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        run: npm run prisma:seed
+
+      - name: Clean empty files
+        run: find dist -type f -empty -delete || true
+
+      - name: Deploy to Production FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: ${{ secrets.FTP_SERVER_PROD }}
@@ -51,7 +56,7 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD_PROD }}
           protocol: ftps
           port: 21
-          local-dir: ./backend/dist/
+          local-dir: ./dist/
           server-dir: /backend/les-vrais-naturels-backend/
           passive: true
           security: loose
@@ -60,9 +65,8 @@ jobs:
           max-connections: 2
           retries: 5
           retry-delay: 15s
-          state-name: .ftp-deploy-sync-state-backend-prod.json
+          state-name: .ftp-deploy-sync-state-prod.json
           exclude: |
             **/.git*
             **/.env*
             **/node_modules/**
-            **/.DS_Store
