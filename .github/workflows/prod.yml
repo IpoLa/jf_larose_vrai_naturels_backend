@@ -77,6 +77,7 @@ jobs:
             **/.DS_Store
             **/Thumbs.db
             **/*.tsbuildinfo
+            **/node_modules/**
             **/node_modules/.prisma/client/libquery_engine-*  # Exclude wrong engines, keep only needed
             **/node_modules/prisma  # CLI not needed in prod
           state-name: .ftp-deploy-backend-prod.json
