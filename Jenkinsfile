@@ -37,25 +37,26 @@ pipeline {
                 sh '''
                     rm -f .env
                     cat > .env << ENVEOF
-        APP_NAME=Les Vrais Naturels Backend
-        NODE_ENV=production
-        PORT=3200
-        TZ=Africa/Algeria
-        DB_HOST=db
-        DB_PORT=3306
-        DB_HOST_PORT=3307
-        DB_USERNAME=jflarose
-        DB_PASSWORD=StrongPass123!
-        DB_DATABASE=les_vrais_naturels
-        MYSQL_ROOT_PASSWORD=RootPass123!
-        DATABASE_URL=mysql://jflarose:StrongPass123!@db:3306/les_vrais_naturels?connection_limit=10&connect_timeout=60&pool_timeout=30&socket_timeout=30
-        JWT_SECRET=jf-larose-les-vrais-naturels-super-secret-2026
-        CLIENT_BASE_URL=https://vrainaturel.jf-larose.com
-        ADMIN_BASE_URL=https://vrainaturel-backoffice.jf-larose.com
-        ALLOWED_ORIGINS=https://vrainaturel-backoffice.jf-larose.com,https://vrainaturel.jf-larose.com,https://jflarose-backoffice.sensinglabo.com,https://jflarose-client.sensinglabo.com,http://localhost:3000,http://localhost:5173,http://192.168.1.6:3000,http://192.168.1.4:3000,http://192.168.1.4:8081
-        SEED_ON_START=true
-        ENVEOF
+APP_NAME=Les Vrais Naturels Backend
+NODE_ENV=production
+PORT=3200
+TZ=Africa/Algiers
+DB_HOST=db
+DB_PORT=3306
+DB_HOST_PORT=3307
+DB_USERNAME=jflarose
+DB_PASSWORD=StrongPass123!
+DB_DATABASE=les_vrais_naturels
+MYSQL_ROOT_PASSWORD=RootPass123!
+DATABASE_URL=mysql://jflarose:StrongPass123!@db:3306/les_vrais_naturels
+JWT_SECRET=jf-larose-les-vrais-naturels-super-secret-2026
+CLIENT_BASE_URL=https://vrainaturel.jf-larose.com
+ADMIN_BASE_URL=https://vrainaturel-backoffice.jf-larose.com
+ALLOWED_ORIGINS=https://vrainaturel-backoffice.jf-larose.com,https://vrainaturel.jf-larose.com,https://jflarose-backoffice.sensinglabo.com,https://jflarose-client.sensinglabo.com,http://localhost:3000,http://localhost:5173,http://192.168.1.6:3000,http://192.168.1.4:3000,http://192.168.1.4:8081
+SEED_ON_START=true
+ENVEOF
                     echo "✅ .env file generated"
+                    cat .env | grep -v PASSWORD | grep -v SECRET
                 '''
             }
         }
