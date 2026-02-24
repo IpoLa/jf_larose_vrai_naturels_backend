@@ -54,7 +54,7 @@ jobs:
           port: 21
           local-dir: ./dist/
           server-dir: /
-          dangerous-clean-slate: true
+          dangerous-clean-slate: false
           passive: true
           security: loose
           timeout: 300000
