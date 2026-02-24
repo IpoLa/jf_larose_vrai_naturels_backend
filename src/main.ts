@@ -123,7 +123,7 @@ async function bootstrap() {
     });
 
     const port = process.env.PORT || 3001;
-    await app.listen(port);
+    await app.listen(port, '0.0.0.0');
     console.log(`🚀 Application démarrée sur: http://localhost:${port}`);
     console.log(`📚 Documentation Swagger: http://localhost:${port}/api/docs`);
     console.log(`🔓 CORS allowed origins:`, allowedOrigins);
