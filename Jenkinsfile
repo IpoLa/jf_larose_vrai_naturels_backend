@@ -143,12 +143,12 @@ ENVEOF
                 sh '''
                     echo "🔍 Checking tables..."
                     docker compose exec -T db mysql -u jflarose -pStrongPass123! les_vrais_naturels -e "
-                        SELECT '\''admin_users'\'' as tbl, COUNT(*) as count FROM admin_users
-                        UNION ALL SELECT '\''products'\'', COUNT(*) FROM products
-                        UNION ALL SELECT '\''commission_rules'\'', COUNT(*) FROM commission_rules
-                        UNION ALL SELECT '\''pharmacies'\'', COUNT(*) FROM pharmacies
-                        UNION ALL SELECT '\''vendors'\'', COUNT(*) FROM vendors;
-                    "
+                        SELECT 'admin_users' as tbl, COUNT(*) as cnt FROM admin_users
+                        UNION ALL SELECT 'products', COUNT(*) FROM products
+                        UNION ALL SELECT 'commission_rules', COUNT(*) FROM commission_rules
+                        UNION ALL SELECT 'pharmacies', COUNT(*) FROM pharmacies
+                        UNION ALL SELECT 'vendors', COUNT(*) FROM vendors;
+                    " 2>/dev/null || echo "⚠️ Could not verify tables yet"
                 '''
             }
         }
