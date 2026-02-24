@@ -5,16 +5,19 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "nest build",
-    "start": "node dist/main",
+    "start": "node dist/main.js",
     "start:dev": "nest start --watch",
+    "start:debug": "nest start --debug --watch",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:push": "prisma db push",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "node dist/prisma/seed.js",
+    "prisma:seed:dev": "ts-node prisma/seed.ts",
+    "postbuild": "tsc prisma/seed.ts --outDir dist/prisma --module commonjs --esModuleInterop --moduleResolution node --target es2017 --skipLibCheck 2>/dev/null || true"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "node dist/prisma/seed.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
@@ -35,7 +38,6 @@
     "qrcode": "^1.5.3",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
-    "tsx": "latest",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
