@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import {Logger, ValidationPipe} from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
@@ -13,8 +13,11 @@ async function bootstrap() {
 
     app.use(cookieParser());
 
+    // ────────────────────────────────────────────────
+    // CORS configuration
+    // ────────────────────────────────────────────────
     const allowedOrigins = process.env.ALLOWED_ORIGINS
-        ? process.env.ALLOWED_ORIGINS.split(',')
+        ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
         : [
             'http://localhost:3000',
             'http://localhost:5173',
@@ -24,12 +27,19 @@ async function bootstrap() {
             'https://jflarose-client.sensinglabo.com',
             'https://jflarose-admin.sensinglabo.com',
             'https://jflarose-backoffice.sensinglabo.com',
-            'https://vrainaturel-backoffice.jf-larose.com'
+            'https://vrainaturel.jf-larose.com',
+            'https://vrainaturel-backoffice.jf-larose.com',
+            'https://vrainaturel-api.sadeempro.xyz',     // ← added your prod domain
         ];
 
-
     app.enableCors({
-        origin: allowedOrigins,
+        origin: (origin, callback) => {
+            if (!origin || allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                callback(new Error('Not allowed by CORS'));
+            }
+        },
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization', 'x-card-number', 'Accept'],
@@ -37,47 +47,23 @@ async function bootstrap() {
 
     app.getHttpAdapter().getInstance().set('trust proxy', 1);
 
-    // CSP améliorée pour permettre plus de ressources
-    if (process.env.NODE_ENV === 'development') {
-        app.use((req, res, next) => {
-            res.setHeader(
-                'Content-Security-Policy',
-                "default-src 'self'; " +
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https: http:; " +
-                "style-src 'self' 'unsafe-inline' https: http:; " +
-                "img-src 'self' data: https: http:; " +
-                "font-src 'self' data: https: http:; " +
-                "connect-src 'self' https: http: ws: wss:;"
-            );
-            next();
-        });
-    } else {
-        // CSP plus stricte pour la production
-        app.use((req, res, next) => {
-            res.setHeader(
-                'Content-Security-Policy',
-                "default-src 'self'; " +
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-                "style-src 'self' 'unsafe-inline'; " +
-                "img-src 'self' data: https:; " +
-                "font-src 'self' data:; " +
-                "connect-src 'self' https://jflarose-client.sensinglabo.com https://jflarose-admin.sensinglabo.com;"
-            );
-            next();
-        });
-    }
-
     app.useGlobalPipes(
         new ValidationPipe({
             whitelist: true,
             transform: true,
             forbidNonWhitelisted: true,
+            // transformOptions: { enableImplicitConversion: true }, // optional
         }),
     );
 
+    // Important: set global prefix **before** creating swagger document
     app.setGlobalPrefix('api');
 
-    // Swagger Documentation
+    // ────────────────────────────────────────────────
+    // Swagger Configuration
+    // ────────────────────────────────────────────────
+    const isProduction = process.env.NODE_ENV === 'production';
+
     const config = new DocumentBuilder()
         .setTitle('Les Vrais Naturels - API JF Larose')
         .setDescription(
@@ -93,6 +79,14 @@ async function bootstrap() {
       `,
         )
         .setVersion('1.0')
+
+        // Very important when behind reverse proxy / different domain
+        .addServer(
+            isProduction
+                ? 'https://vrainaturel-api.sadeempro.xyz'
+                : 'http://localhost:3001',
+        )
+
         .addBearerAuth(
             { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
             'JWT-Admin',
@@ -117,18 +111,31 @@ async function bootstrap() {
         .build();
 
     const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api/docs', app, document, {
+
+    SwaggerModule.setup('docs', app, document, {
+        // ← This is the key change
+        useGlobalPrefix: true,           // respects /api → final url = /api/docs
         swaggerOptions: {
             persistAuthorization: true,
+            tagsSorter: 'alpha',
+            operationsSorter: 'alpha',
         },
         customSiteTitle: 'Les Vrais Naturels - API Docs',
     });
 
     const port = process.env.PORT || 3001;
     await app.listen(port, '0.0.0.0');
+
     console.log(`🚀 Application démarrée sur: http://localhost:${port}`);
     console.log(`📚 Documentation Swagger: http://localhost:${port}/api/docs`);
+    if (isProduction) {
+        console.log(`📚 Production Swagger: https://vrainaturel-api.sadeempro.xyz/api/docs`);
+    }
     console.log(`🔓 CORS allowed origins:`, allowedOrigins);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 }
-bootstrap();
+
+bootstrap().catch((err) => {
+    console.error('Bootstrap failed:', err);
+    process.exit(1);
+});
