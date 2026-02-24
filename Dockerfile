@@ -1,41 +1,42 @@
-FROM node:20-slim
+FROM node:20-alpine
 
-# Optional: install netcat if your entrypoint.sh uses it for wait-for-it style checks
-# RUN apt-get update && apt-get install -y netcat-openbsd && rm -rf /var/lib/apt/lists/*
+# Install OpenSSL 1.1 (required by Prisma 5) + netcat for entrypoint
+RUN apk add --no-cache \
+    openssl \
+    libc6-compat \
+    netcat-openbsd \
+    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/v3.16/main \
+    openssl1.1-compat 2>/dev/null || true
+
+ENV OPENSSL_CONF=/dev/null
 
 WORKDIR /app
 
-# Copy package files first for better caching
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install dependencies (no --legacy-peer-deps unless you have real conflicts)
-RUN npm install
+RUN npm ci
 
-# Generate Prisma client (will download debian-openssl-3.0.x engine)
 RUN npx prisma generate
 
-# Copy rest of source
 COPY . .
 
-# Build NestJS app
 RUN npm run build
 
-# Compile seed.ts (adjust flags as needed)
-RUN npx tsc prisma/seed.ts \
-    --outDir dist/prisma \
-    --module commonjs \
-    --esModuleInterop \
-    --moduleResolution node \
-    --target es2017 \
-    --skipLibCheck \
-    --resolveJsonModule 2>&1 || \
-    echo "⚠️ seed.ts compile warning (may be ok)"
+# Compile seed.ts → dist/prisma/seed.js
+RUN node_modules/.bin/tsc prisma/seed.ts \
+        --outDir dist/prisma \
+        --module commonjs \
+        --esModuleInterop true \
+        --moduleResolution node \
+        --target es2017 \
+        --skipLibCheck \
+        --resolveJsonModule 2>&1 \
+    && echo "✅ seed compiled" \
+    || echo "⚠️ seed compile warning"
 
-# Verify
-RUN ls -la dist/prisma/ || echo "⚠️ dist/prisma not found"
+RUN ls -la dist/prisma/ || echo "❌ dist/prisma missing"
 
-# Entrypoint
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
