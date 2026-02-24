@@ -32,11 +32,9 @@ pipeline {
     }
 
     stages {
-        stage('📥 Pull from GitHub') {
+        stage('Checkout') {
             steps {
-                git url: 'https://github.com/sadeeminformatique/jf_larose_vrai_naturel_backend.git',
-                    branch: 'main',
-                    credentialsId: 'github-token-readonly'
+                checkout scm
             }
         }
 
