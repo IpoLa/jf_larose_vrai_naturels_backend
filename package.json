@@ -2,6 +2,7 @@
   "name": "les-vrais-naturels-backend",
   "version": "1.0.0",
   "description": "Backend API - Les Vrais Naturels - JF Larose",
+  "main": "dist/main.js",
   "scripts": {
     "build": "nest build",
     "start": "node dist/main",

@@ -2,12 +2,11 @@ name: Backend - Preprod (dev → staging)
 
 on:
   push:
-    branches:
-      - dev
+    branches: [ dev ]
 
 jobs:
   build-and-deploy:
-    name: Build → Prisma → Deploy to Preprod FTP
+    name: Build → Deploy to cPanel Preprod
     runs-on: ubuntu-latest
 
     steps:
@@ -19,33 +18,33 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      - name: Build NestJS
         run: npm run build
 
       - name: Prisma Generate
         run: npx prisma generate
 
-      # ── Sanity check: fail fast if main.js is not where expected ──────────
-      - name: Verify dist structure
+      - name: Verify build
         run: |
-          echo "── dist/ contents ──"
-          find dist -type f | sort
-          echo "────────────────────"
+          ls -la dist/
           if [ ! -f dist/main.js ]; then
-            echo "❌ dist/main.js not found! Build output is nested (rootDir misconfigured)."
+            echo "❌ dist/main.js not found!"
             exit 1
           fi
-          echo "✅ dist/main.js found."
+          echo "✅ Build successful"
 
-      - name: Clean empty files
-        run: find dist -type f -empty -delete || true
+      - name: Prepare deployment folder
+        run: |
+          mkdir -p deploy
+          cp -r dist/* deploy/
+          cp package.json deploy/
+          cp -r prisma deploy/ 2>/dev/null || true   # Prisma client if needed
 
-      - name: Deploy to Preprod FTP
+      - name: Deploy to cPanel (FTP)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: ${{ secrets.FTP_SERVER_PRE }}
@@ -53,22 +52,14 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD_PRE }}
           protocol: ftps
           port: 21
-          local-dir: ./dist/
+          local-dir: ./deploy/
           server-dir: /public_html/
+          dangerous-clean-slate: true
           passive: true
           security: loose
           timeout: 300000
-          keepalive: 15000
-          max-connections: 2
-          retries: 5
-          retry-delay: 15s
-          dangerous-clean-slate: true
-          state-name: .ftp-deploy-sync-state-preprod.json
           exclude: |
             **/.git*
             **/.env*
             **/node_modules/**
             **/.DS_Store
-            **/.vscode/**
-            **/.idea/**
-            **/Thumbs.db
