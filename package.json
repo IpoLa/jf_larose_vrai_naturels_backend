@@ -5,7 +5,7 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "nest build",
-    "start": "node dist/main",
+    "start": "node main",
     "start:dev": "nest start -H 192.168.1.6 --watch",
     "start:debug": "nest start --debug --watch",
     "prisma:generate": "prisma generate",
