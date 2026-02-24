@@ -21,6 +21,8 @@ COPY . .
 # Build NestJS app
 RUN npm run build
 
+RUN apk add --no-cache openssl1.1-compat
+
 # Compile seed.ts → dist/prisma/seed.js
 RUN npx tsc prisma/seed.ts \
     --outDir dist/prisma \
