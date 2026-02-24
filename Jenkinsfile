@@ -86,13 +86,14 @@ pipeline {
             }
         }
 
-        stage('🗄️ Prisma Migrate') {
+        stage('🗄️ Prisma Migrate Deploy') {
             steps {
                 sh """
-                    docker run --rm --env-file .env ${IMAGE_NAME}:latest \
-                    npx prisma migrate deploy
+                    docker run --rm --network host --env-file .env \\
+                        les-vrais-naturels-backend:latest \\
+                        npx prisma migrate deploy
                 """
-                echo '✅ Prisma migrations applied'
+                echo 'Prisma migrate deploy attempted'
             }
         }
 
