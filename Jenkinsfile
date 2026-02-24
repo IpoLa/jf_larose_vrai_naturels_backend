@@ -18,7 +18,7 @@ pipeline {
 
         CLIENT_BASE_URL  = 'https://jflarose-client.sensinglabo.com'
         ADMIN_BASE_URL   = 'https://jflarose-backoffice.sensinglabo.com'
-        ALLOWED_ORIGINS  = "https://jflarose-backoffice.sensinglabo.com,https://vrainaturel-backoffice.jf-larose.com,https://vrainaturel.jf-larose.com,https://jflarose-client.sensinglabo.com,http://localhost:3000,http://localhost:5173,http://192.168.1.6:3000,http://192.168.1.4:3000,http://192.168.1.4:8081"
+        ALLOWED_ORIGINS  = "*,https://jflarose-backoffice.sensinglabo.com,https://vrainaturel-backoffice.jf-larose.com,https://vrainaturel.jf-larose.com,https://jflarose-client.sensinglabo.com,http://localhost:3000,http://localhost:5173,http://192.168.1.6:3000,http://192.168.1.4:3000,http://192.168.1.4:8081"
 
         CONTAINER_NAME   = 'les-vrais-naturels-backend'
         IMAGE_NAME       = 'les-vrais-naturels-backend'

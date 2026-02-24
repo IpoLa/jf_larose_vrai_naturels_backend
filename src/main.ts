@@ -19,6 +19,7 @@ async function bootstrap() {
     const allowedOrigins = process.env.ALLOWED_ORIGINS
         ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
         : [
+            '*',
             'http://localhost:3000',
             'http://localhost:5173',
             'http://192.168.1.6:3000',

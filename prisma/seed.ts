@@ -1,7 +1,9 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  log: ['error', 'warn'],
+});
 
 const PRODUCTS_DATA = [
   {
@@ -105,57 +107,109 @@ const PRODUCTS_DATA = [
   },
 ];
 
+const FIFTEEN_DAY_RULES = [
+  { quantityFrom: 1,  quantityTo: 9,    commissionPerProduct: 0,  bonusPerProduct: 0,   label: 'Moins de 10 produits' },
+  { quantityFrom: 10, quantityTo: 14,   commissionPerProduct: 50, bonusPerProduct: 0,   label: '10-14 produits : 50 DA/produit' },
+  { quantityFrom: 15, quantityTo: 19,   commissionPerProduct: 60, bonusPerProduct: 0,   label: '15-19 produits : 60 DA/produit' },
+  { quantityFrom: 20, quantityTo: 24,   commissionPerProduct: 70, bonusPerProduct: 0,   label: '20-24 produits : 70 DA/produit' },
+  { quantityFrom: 25, quantityTo: 29,   commissionPerProduct: 80, bonusPerProduct: 0,   label: '25-29 produits : 80 DA/produit' },
+  { quantityFrom: 30, quantityTo: null, commissionPerProduct: 90, bonusPerProduct: 100, label: '30+ produits : 90 DA/produit + 100 DA Top Vendeur' },
+];
+
+const MONTHLY_RULES = [
+  { quantityFrom: 50, quantityTo: 59,   commissionPerProduct: 0, bonusPerProduct: 10, label: '50-59 produits/mois : +10 DA bonus/produit' },
+  { quantityFrom: 60, quantityTo: 79,   commissionPerProduct: 0, bonusPerProduct: 20, label: '60-79 produits/mois : +20 DA bonus/produit' },
+  { quantityFrom: 80, quantityTo: null, commissionPerProduct: 0, bonusPerProduct: 30, label: '80+ produits/mois : +30 DA bonus/produit' },
+];
+
 async function main() {
   console.log('🌱 Démarrage du seeding...');
 
-  const hashedPassword = await bcrypt.hash('Admin@2026', 10);
-  await prisma.adminUser.upsert({
-    where: { phone: '0770000000' },
-    update: {},
-    create: { phone: '0770000000', passwordHash: hashedPassword, name: 'Administrateur Principal', role: 'admin' },
-  });
-  console.log('✅ Admin: 0770000000 / Admin@2026');
-
-  for (const product of PRODUCTS_DATA) {
-    await prisma.product.upsert({
-      where: { slug: product.slug },
-      update: product,
-      create: { ...product, isActive: true },
+  // ── 1. Admin User ──────────────────────────────────────────────────────────
+  try {
+    const hashedPassword = await bcrypt.hash('Admin@2026', 10);
+    await prisma.adminUser.upsert({
+      where: { phone: '0770000000' },
+      update: {},
+      create: {
+        phone: '0770000000',
+        passwordHash: hashedPassword,
+        name: 'Administrateur Principal',
+        role: 'admin',
+      },
     });
-  }
-  console.log(`✅ ${PRODUCTS_DATA.length} produits créés`);
-
-  const fifteenDayRules = [
-    { quantityFrom: 1,  quantityTo: 9,    commissionPerProduct: 0,  bonusPerProduct: 0,   label: 'Moins de 10 produits' },
-    { quantityFrom: 10, quantityTo: 14,   commissionPerProduct: 50, bonusPerProduct: 0,   label: '10-14 produits : 50 DA/produit' },
-    { quantityFrom: 15, quantityTo: 19,   commissionPerProduct: 60, bonusPerProduct: 0,   label: '15-19 produits : 60 DA/produit' },
-    { quantityFrom: 20, quantityTo: 24,   commissionPerProduct: 70, bonusPerProduct: 0,   label: '20-24 produits : 70 DA/produit' },
-    { quantityFrom: 25, quantityTo: 29,   commissionPerProduct: 80, bonusPerProduct: 0,   label: '25-29 produits : 80 DA/produit' },
-    { quantityFrom: 30, quantityTo: null, commissionPerProduct: 90, bonusPerProduct: 100, label: '30+ produits : 90 DA/produit + 100 DA Top Vendeur' },
-  ];
-  for (const rule of fifteenDayRules) {
-    await prisma.commissionRule.create({ data: { periodType: '15_days', ...rule, isActive: true } });
+    console.log('✅ Admin: 0770000000 / Admin@2026');
+  } catch (e) {
+    console.error('❌ Erreur Admin:', e);
+    throw e;
   }
 
-  const monthlyRules = [
-    { quantityFrom: 50, quantityTo: 59,   commissionPerProduct: 0, bonusPerProduct: 10, label: '50-59 produits/mois : +10 DA bonus/produit' },
-    { quantityFrom: 60, quantityTo: 79,   commissionPerProduct: 0, bonusPerProduct: 20, label: '60-79 produits/mois : +20 DA bonus/produit' },
-    { quantityFrom: 80, quantityTo: null, commissionPerProduct: 0, bonusPerProduct: 30, label: '80+ produits/mois : +30 DA bonus/produit' },
-  ];
-  for (const rule of monthlyRules) {
-    await prisma.commissionRule.create({ data: { periodType: 'monthly', ...rule, isActive: true } });
+  // ── 2. Products ────────────────────────────────────────────────────────────
+  try {
+    for (const product of PRODUCTS_DATA) {
+      await prisma.product.upsert({
+        where: { slug: product.slug },
+        update: product,
+        create: { ...product, isActive: true },
+      });
+    }
+    console.log(`✅ ${PRODUCTS_DATA.length} produits créés`);
+  } catch (e) {
+    console.error('❌ Erreur Produits:', e);
+    throw e;
   }
-  console.log('✅ Règles de commission créées');
 
-  await prisma.pharmacy.upsert({
-    where: { id: 'seed-pharmacy-1' },
-    update: {},
-    create: { id: 'seed-pharmacy-1', name: 'Pharmacie Centrale', address: '12 Rue Didouche Mourad, Alger', phone: '021000000', region: 'Alger', status: 'active' },
-  });
-  console.log('✅ Pharmacie exemple créée');
+  // ── 3. Commission Rules ────────────────────────────────────────────────────
+  // Delete existing rules first to avoid duplicates (safe to re-run)
+  try {
+    await prisma.commissionRule.deleteMany({});
+    console.log('🗑️  Anciennes règles supprimées');
+
+    for (const rule of FIFTEEN_DAY_RULES) {
+      await prisma.commissionRule.create({
+        data: { periodType: '15_days', ...rule, isActive: true },
+      });
+    }
+
+    for (const rule of MONTHLY_RULES) {
+      await prisma.commissionRule.create({
+        data: { periodType: 'monthly', ...rule, isActive: true },
+      });
+    }
+    console.log('✅ Règles de commission créées');
+  } catch (e) {
+    console.error('❌ Erreur Règles de commission:', e);
+    throw e;
+  }
+
+  // ── 4. Pharmacy ────────────────────────────────────────────────────────────
+  try {
+    await prisma.pharmacy.upsert({
+      where: { id: 'seed-pharmacy-1' },
+      update: {},
+      create: {
+        id: 'seed-pharmacy-1',
+        name: 'Pharmacie Centrale',
+        address: '12 Rue Didouche Mourad, Alger',
+        phone: '021000000',
+        region: 'Alger',
+        status: 'active',
+      },
+    });
+    console.log('✅ Pharmacie exemple créée');
+  } catch (e) {
+    console.error('❌ Erreur Pharmacie:', e);
+    throw e;
+  }
+
   console.log('\n🎉 Seed terminé avec succès !');
 }
 
 main()
-    .catch((e) => { console.error(e); process.exit(1); })
-    .finally(async () => { await prisma.$disconnect(); });
+    .catch((e) => {
+      console.error('💥 Seed échoué:', e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
