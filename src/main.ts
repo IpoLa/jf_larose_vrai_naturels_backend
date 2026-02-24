@@ -23,6 +23,8 @@ async function bootstrap() {
             'http://192.168.1.4:8081',
             'https://jflarose-client.sensinglabo.com',
             'https://jflarose-admin.sensinglabo.com',
+            'https://jflarose-backoffice.sensinglabo.com',
+            'https://vrainaturel-backoffice.jf-larose.com'
         ];
 
 
