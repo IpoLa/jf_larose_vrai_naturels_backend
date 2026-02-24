@@ -132,7 +132,7 @@ ENVEOF
         stage('🌱 Prisma Seed') {
             steps {
                 sh '''
-                    docker compose exec -T backend npx tsx prisma/seed.ts
+                    docker compose exec -T backend node dist/prisma/seed.js
                 '''
                 echo '✅ Seed completed'
             }
