@@ -1,3 +1,5 @@
+// src/modules/qr-codes/qr-codes.service.ts
+
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as QRCode from 'qrcode';
@@ -7,8 +9,8 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class QrCodesService {
   constructor(
-    private prisma: PrismaService,
-    private configService: ConfigService,
+      private prisma: PrismaService,
+      private configService: ConfigService,
   ) {}
 
   private getBaseUrl(): string {
@@ -16,7 +18,7 @@ export class QrCodesService {
   }
 
   async generateQrCode(vendorId: string) {
-    // Deactivate old QR codes
+    // Deactivate old QR codes (Single Responsibility – clear old before create)
     await this.prisma.qrCode.updateMany({
       where: { vendorId, isActive: true },
       data: { isActive: false },
@@ -25,14 +27,13 @@ export class QrCodesService {
     const uniqueKey = uuidv4();
     const clientUrl = `${this.getBaseUrl()}/auth?card=${uniqueKey}`;
 
-    // Generate QR code image as base64
     const qrImageData = await QRCode.toDataURL(clientUrl, {
-      width: 300,
-      margin: 2,
+      width: 240,
+      margin: 1,
+      errorCorrectionLevel: 'M',
       color: { dark: '#1a472a', light: '#ffffff' },
     });
 
-    // Update vendor's unique card number
     await this.prisma.vendor.update({
       where: { id: vendorId },
       data: { uniqueCardNumber: uniqueKey },
@@ -43,7 +44,7 @@ export class QrCodesService {
         vendorId,
         uniqueKey,
         qrUrl: clientUrl,
-        qrImageData,
+        qrImageData,       // now fits in TEXT
         isActive: true,
       },
     });
@@ -52,7 +53,7 @@ export class QrCodesService {
   }
 
   async regenerateQrCode(vendorId: string) {
-    return this.generateQrCode(vendorId);
+    return this.generateQrCode(vendorId); // reuse logic (DRY)
   }
 
   async getVendorQrCode(vendorId: string) {

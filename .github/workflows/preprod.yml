@@ -54,7 +54,7 @@ jobs:
           protocol: ftps
           port: 21
           local-dir: ./dist/
-          server-dir: /backend/les-vrais-naturels-backend/
+          server-dir: /public_html/
           passive: true
           security: loose
           timeout: 300000

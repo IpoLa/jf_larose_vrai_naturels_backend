@@ -65,7 +65,7 @@ model Delegue {
   name             String
   email            String?
   phone            String?
-  region           Json     // was String[] – MySQL has no array → stored as JSON
+  region           Json
   sector           String?
   status           String   @default("active")
   createdAt        DateTime @default(now())
@@ -82,7 +82,7 @@ model DelegueQrCode {
   delegueId   String
   uniqueKey   String   @unique
   qrUrl       String
-  qrImageData String?
+  qrImageData String?  @db.LongText
   generatedAt DateTime @default(now())
   isActive    Boolean  @default(true)
 
@@ -168,7 +168,7 @@ model QrCode {
   vendorId    String
   uniqueKey   String   @unique
   qrUrl       String
-  qrImageData String?
+  qrImageData String?  @db.LongText
   generatedAt DateTime @default(now())
   isActive    Boolean  @default(true)
 
