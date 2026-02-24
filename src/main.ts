@@ -29,7 +29,7 @@ async function bootstrap() {
             'https://jflarose-backoffice.sensinglabo.com',
             'https://vrainaturel.jf-larose.com',
             'https://vrainaturel-backoffice.jf-larose.com',
-            'https://vrainaturel-api.sadeempro.xyz',     // ← added your prod domain
+            'https://vrainaturel-api.sadeempro.xyz',
         ];
 
     app.enableCors({
