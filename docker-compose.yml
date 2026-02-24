@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: les-vrais-naturels-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_HOST_PORT}:3306"
+    volumes:
+      - les_vrais_naturels_mysql_data:/var/lib/mysql
+    networks:
+      - les-vrais-naturels-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  backend:
+    image: les-vrais-naturels-backend:latest
+    container_name: les-vrais-naturels-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${PORT}:3000"
+    networks:
+      - les-vrais-naturels-network
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  les_vrais_naturels_mysql_data:
+    driver: local
+
+networks:
+  les-vrais-naturels-network:
+    driver: bridge

@@ -10,23 +10,18 @@ async function bootstrap() {
     });
 
     app.useLogger(new Logger());
-
     app.use(cookieParser());
 
-    // ────────────────────────────────────────────────
-    // CORS configuration
-    // ────────────────────────────────────────────────
+    // ── CORS ──────────────────────────────────────────────────────────────────
     const allowedOrigins = process.env.ALLOWED_ORIGINS
         ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
         : [
-            '*',
             'http://localhost:3000',
             'http://localhost:5173',
             'http://192.168.1.6:3000',
             'http://192.168.1.4:3000',
             'http://192.168.1.4:8081',
             'https://jflarose-client.sensinglabo.com',
-            'https://jflarose-admin.sensinglabo.com',
             'https://jflarose-backoffice.sensinglabo.com',
             'https://vrainaturel.jf-larose.com',
             'https://vrainaturel-backoffice.jf-larose.com',
@@ -35,11 +30,10 @@ async function bootstrap() {
 
     app.enableCors({
         origin: (origin, callback) => {
-            if (!origin || allowedOrigins.includes(origin)) {
-                callback(null, true);
-            } else {
-                callback(new Error('Not allowed by CORS'));
-            }
+            // Allow requests with no origin (mobile apps, curl, Postman)
+            if (!origin) return callback(null, true);
+            if (allowedOrigins.includes(origin)) return callback(null, true);
+            callback(new Error(`CORS blocked: ${origin}`));
         },
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -53,41 +47,34 @@ async function bootstrap() {
             whitelist: true,
             transform: true,
             forbidNonWhitelisted: true,
-            // transformOptions: { enableImplicitConversion: true }, // optional
         }),
     );
 
-    // Important: set global prefix **before** creating swagger document
     app.setGlobalPrefix('api');
 
-    // ────────────────────────────────────────────────
-    // Swagger Configuration
-    // ────────────────────────────────────────────────
+    // ── Swagger ───────────────────────────────────────────────────────────────
     const isProduction = process.env.NODE_ENV === 'production';
 
     const config = new DocumentBuilder()
         .setTitle('Les Vrais Naturels - API JF Larose')
         .setDescription(
             `Documentation complète de l'API pour la plateforme de fidélité vendeurs pharmacie.
-      
-      ## Authentification
-      - **Admin**: JWT via \`POST /api/admin/auth/login\`
-      - **Vendeur**: Numéro de carte unique via header \`x-card-number\`
-      
-      ## Périodes
-      - **15 jours**: Calcul de commission basé sur la date d'action du vendeur
-      - **Mensuel**: Bonus d'accélération de performance
-      `,
+
+## Authentification
+- **Admin**: JWT via \`POST /api/admin/auth/login\`
+- **Vendeur**: Numéro de carte unique via header \`x-card-number\`
+
+## Périodes
+- **15 jours**: Calcul de commission basé sur la date d'action du vendeur
+- **Mensuel**: Bonus d'accélération de performance
+`,
         )
         .setVersion('1.0')
-
-        // Very important when behind reverse proxy / different domain
         .addServer(
             isProduction
                 ? 'https://vrainaturel-api.sadeempro.xyz'
                 : 'http://localhost:3001',
         )
-
         .addBearerAuth(
             { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
             'JWT-Admin',
@@ -114,8 +101,7 @@ async function bootstrap() {
     const document = SwaggerModule.createDocument(app, config);
 
     SwaggerModule.setup('docs', app, document, {
-        // ← This is the key change
-        useGlobalPrefix: true,           // respects /api → final url = /api/docs
+        useGlobalPrefix: true,
         swaggerOptions: {
             persistAuthorization: true,
             tagsSorter: 'alpha',
@@ -124,15 +110,16 @@ async function bootstrap() {
         customSiteTitle: 'Les Vrais Naturels - API Docs',
     });
 
-    const port = process.env.PORT || 3001;
+    // ── IMPORTANT: always listen on 3000 internally, Docker maps PORT→3000 ──
+    const port = 3000;
     await app.listen(port, '0.0.0.0');
 
     console.log(`🚀 Application démarrée sur: http://localhost:${port}`);
-    console.log(`📚 Documentation Swagger: http://localhost:${port}/api/docs`);
+    console.log(`📚 Swagger: http://localhost:${port}/api/docs`);
     if (isProduction) {
         console.log(`📚 Production Swagger: https://vrainaturel-api.sadeempro.xyz/api/docs`);
     }
-    console.log(`🔓 CORS allowed origins:`, allowedOrigins);
+    console.log(`🔓 CORS origins:`, allowedOrigins);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 }
 

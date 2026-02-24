@@ -2,32 +2,37 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME         = 'Les Vrais Naturels Backend'
-        NODE_ENV         = 'development'
-        PORT             = '3200'
-        TZ               = 'Africa/Algiers'
+        APP_NAME          = 'Les Vrais Naturels Backend'
+        NODE_ENV          = 'production'
+        PORT              = '3200'
+        TZ                = 'Africa/Algiers'
 
-        DB_HOST          = 'localhost'
-        DB_PORT          = '3306'
-        DB_USERNAME      = 'jflarose'
-        DB_PASSWORD      = 'StrongPass123!'
-        DB_DATABASE      = 'les_vrais_naturels'
-        DATABASE_URL     = "mysql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_DATABASE}"
+        // ── MySQL (containerized) ─────────────────────────────────────────────
+        DB_HOST           = 'db'                      // service name inside docker network
+        DB_PORT           = '3306'
+        DB_HOST_PORT      = '3307'                    // exposed on host (avoid conflict with host mysql)
+        DB_USERNAME       = 'jflarose'
+        DB_PASSWORD       = 'StrongPass123!'
+        DB_DATABASE       = 'les_vrais_naturels'
+        MYSQL_ROOT_PASSWORD = 'RootPass123!'
+        DATABASE_URL      = "mysql://${DB_USERNAME}:${DB_PASSWORD}@db:3306/${DB_DATABASE}"
 
-        JWT_SECRET       = 'jf-larose-les-vrais-naturels-super-secret-2026'
+        // ── JWT ───────────────────────────────────────────────────────────────
+        JWT_SECRET        = 'jf-larose-les-vrais-naturels-super-secret-2026'
 
-        CLIENT_BASE_URL  = 'https://jflarose-client.sensinglabo.com'
-        ADMIN_BASE_URL   = 'https://jflarose-backoffice.sensinglabo.com'
-        ALLOWED_ORIGINS  = "*,https://jflarose-backoffice.sensinglabo.com,https://vrainaturel-backoffice.jf-larose.com,https://vrainaturel.jf-larose.com,https://jflarose-client.sensinglabo.com,http://localhost:3000,http://localhost:5173,http://192.168.1.6:3000,http://192.168.1.4:3000,http://192.168.1.4:8081"
+        // ── Frontend URLs ─────────────────────────────────────────────────────
+        CLIENT_BASE_URL   = 'https://vrainaturel.jf-larose.com'
+        ADMIN_BASE_URL    = 'https://vrainaturel-backoffice.jf-larose.com'
+        ALLOWED_ORIGINS   = 'https://vrainaturel-backoffice.jf-larose.com,https://vrainaturel.jf-larose.com,https://jflarose-backoffice.sensinglabo.com,https://jflarose-client.sensinglabo.com,http://localhost:3000,http://localhost:5173,http://192.168.1.6:3000,http://192.168.1.4:3000,http://192.168.1.4:8081'
 
-        CONTAINER_NAME   = 'les-vrais-naturels-backend'
-        IMAGE_NAME       = 'les-vrais-naturels-backend'
-        HOST_PORT        = "${PORT}"
-        INTERNAL_PORT    = '3000'
+        // ── Docker ────────────────────────────────────────────────────────────
+        IMAGE_NAME        = 'les-vrais-naturels-backend'
+        CONTAINER_NAME    = 'les-vrais-naturels-backend'
     }
 
     stages {
-        stage('Checkout') {
+
+        stage('📥 Checkout') {
             steps {
                 checkout scm
             }
@@ -36,17 +41,34 @@ pipeline {
         stage('📝 Generate .env File') {
             steps {
                 script {
-                    sh 'rm -f .env || true'
-                    sh "echo APP_NAME='${APP_NAME}' >> .env"
-                    sh "echo NODE_ENV=${NODE_ENV} >> .env"
-                    sh "echo PORT=${PORT} >> .env"
-                    sh "echo TZ=${TZ} >> .env"
-                    sh "echo DATABASE_URL='${DATABASE_URL}' >> .env"
-                    sh "echo JWT_SECRET='${JWT_SECRET}' >> .env"
-                    sh "echo CLIENT_BASE_URL='${CLIENT_BASE_URL}' >> .env"
-                    sh "echo ADMIN_BASE_URL='${ADMIN_BASE_URL}' >> .env"
-                    sh "echo ALLOWED_ORIGINS='${ALLOWED_ORIGINS}' >> .env"
-                    echo '✅ .env file generated'
+                    sh '''
+                        rm -f .env
+
+                        cat > .env << ENVEOF
+APP_NAME=Les Vrais Naturels Backend
+NODE_ENV=production
+PORT=3200
+TZ=Africa/Algiers
+
+DB_HOST=db
+DB_PORT=3306
+DB_HOST_PORT=3307
+DB_USERNAME=jflarose
+DB_PASSWORD=StrongPass123!
+DB_DATABASE=les_vrais_naturels
+MYSQL_ROOT_PASSWORD=RootPass123!
+DATABASE_URL=mysql://jflarose:StrongPass123!@db:3306/les_vrais_naturels
+
+JWT_SECRET=jf-larose-les-vrais-naturels-super-secret-2026
+
+CLIENT_BASE_URL=https://vrainaturel.jf-larose.com
+ADMIN_BASE_URL=https://vrainaturel-backoffice.jf-larose.com
+ALLOWED_ORIGINS=https://vrainaturel-backoffice.jf-larose.com,https://vrainaturel.jf-larose.com,https://jflarose-backoffice.sensinglabo.com,https://jflarose-client.sensinglabo.com,http://localhost:3000,http://localhost:5173,http://192.168.1.6:3000,http://192.168.1.4:3000,http://192.168.1.4:8081
+ENVEOF
+
+                        echo '✅ .env file generated'
+                        cat .env | grep -v PASSWORD | grep -v SECRET
+                    '''
                 }
             }
         }
@@ -64,56 +86,67 @@ pipeline {
             }
         }
 
-        stage('🛑 Stop & Remove Old Container') {
+        stage('🛑 Stop & Remove Old Stack') {
             steps {
-                sh """
-                    if [ \$(docker ps -aq -f name=${CONTAINER_NAME}) ]; then
-                        docker stop ${CONTAINER_NAME} || true
-                        docker rm ${CONTAINER_NAME} || true
-                        echo '✅ Old container removed'
-                    else
-                        echo 'ℹ️ No old container found'
-                    fi
-                """
+                sh '''
+                    docker compose down --remove-orphans || true
+                    echo '✅ Old stack removed'
+                '''
             }
         }
 
-//         stage('🗄️ Prisma Migrate Deploy') {
-//             steps {
-//                 sh """
-//                     docker run --rm --network host --env-file .env \\
-//                         ${IMAGE_NAME}:latest \\
-//                         npx prisma migrate deploy
-//                 """
-//                 echo '✅ Prisma migrate deploy done'
-//             }
-//         }
-
-//         stage('🌱 Prisma Seed') {
-//             steps {
-//                 sh """
-//                     docker run --rm --network host --env-file .env \\
-//                         ${IMAGE_NAME}:latest \\
-//                         npx tsx prisma/seed.ts
-//                 """
-//                 echo '✅ Seed completed'
-//             }
-//         }
-
-        stage('🚀 Run New Container') {
+        stage('🚀 Start Docker Compose Stack') {
             steps {
-                sh """
-                    docker run -d \\
-                        --name ${CONTAINER_NAME} \\
-                        --restart unless-stopped \\
-                        --network host \\
-                        --env-file .env \\
-                        -p ${HOST_PORT}:${INTERNAL_PORT} \\
-                        ${IMAGE_NAME}:latest
-                """
-                echo "✅ Container started → http://209.74.89.216:${HOST_PORT}"
+                sh '''
+                    docker compose up -d
+
+                    echo '⏳ Waiting for MySQL to be healthy...'
+                    for i in $(seq 1 30); do
+                        if docker compose exec -T db mysqladmin ping -h localhost -u root -pRootPass123! --silent 2>/dev/null; then
+                            echo '✅ MySQL is ready!'
+                            break
+                        fi
+                        echo "   attempt $i/30 - waiting 3s..."
+                        sleep 3
+                    done
+                '''
+                echo '✅ Docker Compose stack started'
             }
         }
+
+        stage('🗄️ Prisma Migrate Deploy') {
+            steps {
+                sh '''
+                    docker compose exec -T backend npx prisma migrate deploy
+                '''
+                echo '✅ Prisma migrations applied'
+            }
+        }
+
+        stage('🌱 Prisma Seed') {
+            steps {
+                sh '''
+                    docker compose exec -T backend npx tsx prisma/seed.ts
+                '''
+                echo '✅ Seed completed'
+            }
+        }
+
+        stage('📊 Verify Database') {
+            steps {
+                sh '''
+                    echo "🔍 Checking tables..."
+                    docker compose exec -T db mysql -u jflarose -pStrongPass123! les_vrais_naturels -e "
+                        SELECT '\''admin_users'\'' as tbl, COUNT(*) as count FROM admin_users
+                        UNION ALL SELECT '\''products'\'', COUNT(*) FROM products
+                        UNION ALL SELECT '\''commission_rules'\'', COUNT(*) FROM commission_rules
+                        UNION ALL SELECT '\''pharmacies'\'', COUNT(*) FROM pharmacies
+                        UNION ALL SELECT '\''vendors'\'', COUNT(*) FROM vendors;
+                    "
+                '''
+            }
+        }
+
     }
 
     post {
@@ -122,10 +155,23 @@ pipeline {
             echo '🧹 Workspace cleaned'
         }
         success {
-            echo "🎉 Deployment successful - Build #${BUILD_NUMBER}"
+            echo """
+╔══════════════════════════════════════════════╗
+║  🎉 Deployment Successful - Build #${BUILD_NUMBER}
+║  🚀 API:    http://209.74.89.216:3200
+║  📚 Docs:   http://209.74.89.216:3200/api/docs
+║  🗄️  MySQL:  localhost:3307
+╚══════════════════════════════════════════════╝
+            """
         }
         failure {
-            echo '❌ Deployment failed - check logs'
+            sh '''
+                echo "❌ Deployment failed!"
+                echo "=== Backend Logs ==="
+                docker compose logs backend --tail 100 2>/dev/null || true
+                echo "=== MySQL Logs ==="
+                docker compose logs db --tail 50 2>/dev/null || true
+            '''
         }
     }
 }
