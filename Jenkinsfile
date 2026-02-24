@@ -129,14 +129,14 @@ ENVEOF
             }
         }
 
-        stage('🌱 Prisma Seed') {
-            steps {
-                sh '''
-                    docker compose exec -T backend node dist/prisma/seed.js
-                '''
-                echo '✅ Seed completed'
-            }
-        }
+//         stage('🌱 Prisma Seed') {
+//             steps {
+//                 sh '''
+//                     docker compose exec -T backend node prisma/seed.js
+//                 '''
+//                 echo '✅ Seed completed'
+//             }
+//         }
 
         stage('📊 Verify Database') {
             steps {
