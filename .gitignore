@@ -3,6 +3,9 @@
 /build
 /tmp
 
+# TypeScript incremental build cache (stays local, never deployed)
+.tsbuildinfo
+
 # Dependencies
 /node_modules
 

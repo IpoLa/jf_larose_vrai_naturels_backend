@@ -1,55 +1,25 @@
 {
   "compilerOptions": {
-    // Core settings for NestJS + modern Node.js
-    "target": "ES2022",                        // Modern target (supports async/await natively)
-    "module": "commonjs",                       // Required for NestJS (Node.js runtime)
-    "lib": ["ES2023", "DOM"],                   // ES2023 + DOM types (useful even in backend)
-
-    // Output & paths
-    "outDir": "./dist",
-    "rootDir": "./src",                         // Enforce src/ as source root
-    "baseUrl": "./src",                         // Allows cleaner imports like import { X } from 'modules/X'
-    "paths": {
-      "@/*": ["*"]                              // Optional: enables @/utils/... imports
-    },
-
-    // Strictness & safety (highly recommended for production code)
-    "strict": false,                             // Enables all strict type-checking options
-    "noImplicitAny": true,
-    "strictNullChecks": false,
-    "noImplicitThis": false,
-    "useUnknownInCatchVariables": false,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "exactOptionalPropertyTypes": false,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": false,
-    "noUncheckedIndexedAccess": false,
-
-    // Decorators (required for NestJS)
-    "experimentalDecorators": true,
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
     "emitDecoratorMetadata": true,
-
-    // Other good defaults
-    "declaration": false,
-    "sourceMap": false,
-    "incremental": true,
-    "skipLibCheck": true,                       // Faster builds, safe in most cases
-    "forceConsistentCasingInFileNames": false,   // Prevents case-sensitivity bugs
-    "removeComments": false,
-    "allowSyntheticDefaultImports": false,
-    "esModuleInterop": true                     // Better interop with CommonJS modules
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2021",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": false,
+    "skipLibCheck": true,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "forceConsistentCasingInFileNames": false,
+    "noFallthroughCasesInSwitch": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true
   },
-
-  "include": [
-    "src/**/*.ts",
-    "test/**/*.ts"
-  ],
-
-  "exclude": [
-    "node_modules",
-    "dist",
-    "**/*.spec.ts",
-    "**/*.test.ts"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "prisma", "**/*.spec.ts"]
 }

@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - dev
-    # Remove paths filter completely - or use root-level patterns if needed
-    # paths: []   ← comment out or delete this section
 
 jobs:
   build-and-deploy:
@@ -32,15 +30,17 @@ jobs:
       - name: Prisma Generate
         run: npx prisma generate
 
-#      - name: Prisma Migrate (deploy)
-#        env:
-#          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-#        run: npx prisma migrate deploy
-#
-#      - name: Prisma Seed
-#        env:
-#          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-#        run: npm run prisma:seed
+      # ── Sanity check: fail fast if main.js is not where expected ──────────
+      - name: Verify dist structure
+        run: |
+          echo "── dist/ contents ──"
+          find dist -type f | sort
+          echo "────────────────────"
+          if [ ! -f dist/main.js ]; then
+            echo "❌ dist/main.js not found! Build output is nested (rootDir misconfigured)."
+            exit 1
+          fi
+          echo "✅ dist/main.js found."
 
       - name: Clean empty files
         run: find dist -type f -empty -delete || true
