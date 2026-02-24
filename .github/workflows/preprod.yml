@@ -62,6 +62,7 @@ jobs:
           max-connections: 2
           retries: 5
           retry-delay: 15s
+          dangerous-clean-slate: true
           state-name: .ftp-deploy-sync-state-preprod.json
           exclude: |
             **/.git*
