@@ -101,13 +101,19 @@ ENVEOF
                     docker compose up -d
 
                     echo '⏳ Waiting for MySQL to be healthy...'
-                    for i in $(seq 1 30); do
-                        if docker compose exec -T db mysqladmin ping -h localhost -u root -pRootPass123! --silent 2>/dev/null; then
+                    for i in $(seq 1 40); do
+                        STATUS=$(docker inspect --format='{{.State.Health.Status}}' les-vrais-naturels-mysql 2>/dev/null || echo "unknown")
+                        echo "   attempt $i/40 - MySQL status: $STATUS"
+                        if [ "$STATUS" = "healthy" ]; then
                             echo '✅ MySQL is ready!'
                             break
                         fi
-                        echo "   attempt $i/30 - waiting 3s..."
-                        sleep 3
+                        if [ $i -eq 40 ]; then
+                            echo '❌ MySQL did not become healthy in time'
+                            docker logs les-vrais-naturels-mysql --tail 30
+                            exit 1
+                        fi
+                        sleep 5
                     done
                 '''
                 echo '✅ Docker Compose stack started'
