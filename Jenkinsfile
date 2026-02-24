@@ -27,13 +27,13 @@ pipeline {
             }
         }
 
-        stage('Install & Build') {
-            steps {
-                sh 'npm ci'
-                sh 'npx prisma generate'
-                sh 'npm run build'
-            }
-        }
+//         stage('Install & Build') {
+//             steps {
+//                 sh 'npm ci'
+//                 sh 'npx prisma generate'
+//                 sh 'npm run build'
+//             }
+//         }
 
         stage('Build Docker Image') {
             steps {
