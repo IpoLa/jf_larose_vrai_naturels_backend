@@ -78,16 +78,16 @@ pipeline {
             }
         }
 
-        stage('🗄️ Prisma Migrate Deploy') {
-            steps {
-                sh """
-                    docker run --rm --network host --env-file .env \\
-                        ${IMAGE_NAME}:latest \\
-                        npx prisma migrate deploy
-                """
-                echo '✅ Prisma migrate deploy done'
-            }
-        }
+//         stage('🗄️ Prisma Migrate Deploy') {
+//             steps {
+//                 sh """
+//                     docker run --rm --network host --env-file .env \\
+//                         ${IMAGE_NAME}:latest \\
+//                         npx prisma migrate deploy
+//                 """
+//                 echo '✅ Prisma migrate deploy done'
+//             }
+//         }
 
 //         stage('🌱 Prisma Seed') {
 //             steps {
