@@ -89,16 +89,16 @@ pipeline {
             }
         }
 
-        stage('🌱 Prisma Seed') {
-            steps {
-                sh """
-                    docker run --rm --network host --env-file .env \\
-                        ${IMAGE_NAME}:latest \\
-                        npx tsx prisma/seed.ts
-                """
-                echo '✅ Seed completed'
-            }
-        }
+//         stage('🌱 Prisma Seed') {
+//             steps {
+//                 sh """
+//                     docker run --rm --network host --env-file .env \\
+//                         ${IMAGE_NAME}:latest \\
+//                         npx tsx prisma/seed.ts
+//                 """
+//                 echo '✅ Seed completed'
+//             }
+//         }
 
         stage('🚀 Run New Container') {
             steps {
