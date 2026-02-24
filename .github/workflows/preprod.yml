@@ -67,7 +67,7 @@ jobs:
           port:         21
           local-dir:    ./deploy/
           server-dir:   /   # Change to /api/ or /backend/ if you use subfolder
-          dangerous-clean-slate: false  # Incremental = safer
+          dangerous-clean-slate: true  # Incremental = safer
           passive:      true
           security:     loose
           timeout:      600000          # Longer for large node_modules
