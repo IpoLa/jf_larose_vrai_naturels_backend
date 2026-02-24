@@ -2,103 +2,140 @@ pipeline {
     agent any
 
     environment {
-        // ── Static values embedded directly in pipeline ────────────────────────
-        // WARNING: These are visible to anyone who can see this pipeline/job
-        DATABASE_URL     = 'mysql://root:0664571928@your-db-host:3306/les_vrais_naturels'
-        JWT_SECRET       = 'jf-larose-les-vrais-naturels-super-secret-2026'
+        // ── All configuration values are static / hardcoded here ───────────────
+        // WARNING: Visible to anyone with access to this Jenkins job/pipeline
+
+        // Application & Server
+        APP_NAME         = 'Les Vrais Naturels Backend'
+        NODE_ENV         = 'production'
         PORT             = '3200'
+        TZ               = 'Africa/Algiers'
+
+        // Database (MySQL)
+        DB_HOST          = 'your-db-host'           // ← CHANGE THIS
+        DB_PORT          = '3306'
+        DB_USERNAME      = 'root'
+        DB_PASSWORD      = '0664571928'
+        DB_DATABASE      = 'les_vrais_naturels'
+        DATABASE_URL     = "mysql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_DATABASE}"
+
+        // JWT
+        JWT_SECRET       = 'jf-larose-les-vrais-naturels-super-secret-2026'
+
+        // Frontend URLs
         CLIENT_BASE_URL  = 'https://jflarose-client.sensinglabo.com'
         ADMIN_BASE_URL   = 'https://jflarose-backoffice.sensinglabo.com'
 
-        // Docker image settings
-        DOCKER_IMAGE     = 'IpoLa/les-vrais-naturels-backend'
-        DOCKER_TAG       = "${env.BRANCH_NAME == 'main' ? 'latest' : 'dev-' + env.BUILD_NUMBER}"
+        // Docker settings
         CONTAINER_NAME   = 'les-vrais-naturels-backend'
+        IMAGE_NAME       = 'les-vrais-naturels-backend'  // local image name
         HOST_PORT        = "${PORT}"
-        INTERNAL_PORT    = '3000'
-        SERVER_USER      = 'ubuntu'
-        SERVER_HOST      = '209.74.89.216'
+        INTERNAL_PORT    = '3000'   // port your NestJS listens on inside container
     }
 
     stages {
-        stage('Checkout') {
+        stage('📥 Pull from GitHub') {
             steps {
-                checkout scm
+                git url: 'https://github.com/sadeeminformatique/jf_larose_vrai_naturel_backend.git',
+                    branch: 'main',   // ← change to 'dev' if needed
+                    credentialsId: 'github-token-readonly'  // ← your PAT credential ID
             }
         }
 
-//         stage('Install & Build') {
-//             steps {
-//                 sh 'npm ci'
-//                 sh 'npx prisma generate'
-//                 sh 'npm run build'
-//             }
-//         }
+        stage('📝 Generate .env File') {
+            steps {
+                script {
+                    sh 'rm -f .env || true'
 
-        stage('Build Docker Image') {
+                    // Core app settings
+                    sh "echo APP_NAME='${APP_NAME}' >> .env"
+                    sh "echo NODE_ENV=${NODE_ENV} >> .env"
+                    sh "echo PORT=${PORT} >> .env"
+                    sh "echo TZ=${TZ} >> .env"
+
+                    // Database
+                    sh "echo DATABASE_URL='${DATABASE_URL}' >> .env"
+
+                    // JWT
+                    sh "echo JWT_SECRET='${JWT_SECRET}' >> .env"
+
+                    // Frontend origins
+                    sh "echo CLIENT_BASE_URL='${CLIENT_BASE_URL}' >> .env"
+                    sh "echo ADMIN_BASE_URL='${ADMIN_BASE_URL}' >> .env"
+
+                    // Optional: add more variables here if needed
+                    // sh "echo SOME_OTHER_KEY=value >> .env"
+
+                    echo '✅ .env file generated successfully'
+                }
+            }
+        }
+
+        stage('🐳 Build Docker Image') {
             steps {
                 sh """
-                    docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
-                    docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
+                    docker build \
+                        --no-cache \
+                        -t ${IMAGE_NAME}:${BUILD_NUMBER} \
+                        -t ${IMAGE_NAME}:latest \
+                        .
+                """
+                echo '✅ Docker image built successfully'
+            }
+        }
+
+        stage('🛑 Stop & Remove Existing Container') {
+            steps {
+                sh """
+                    if [ \$(docker ps -aq -f name=${CONTAINER_NAME}) ]; then
+                        docker stop ${CONTAINER_NAME} || true
+                        docker rm ${CONTAINER_NAME} || true
+                        echo '✅ Old container stopped and removed'
+                    else
+                        echo 'ℹ️ No existing container found'
+                    fi
                 """
             }
         }
 
-        stage('Push to Registry') {
-            when { branch 'main' }
+        // Optional: Prisma migrate reset (uncomment if you want to reset DB on every deploy)
+        // stage('🗄️ Prisma Migrate Reset') {
+        //     steps {
+        //         sh """
+        //             docker run --rm --env-file .env ${IMAGE_NAME}:latest \
+        //             npx prisma migrate reset --force
+        //         """
+        //         echo '✅ Prisma database reset completed'
+        //     }
+        // }
+
+        stage('🚀 Run New Backend Container') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'docker-hub-credentials',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
-                        docker push ${DOCKER_IMAGE}:latest
-                    '''
-                }
-            }
-        }
-
-        stage('Deploy to Server') {
-            steps {
-                sshagent(credentials: ['server-ssh-key']) {
-                    sh """
-                        ssh -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_HOST} << 'EOF'
-                            docker pull ${DOCKER_IMAGE}:latest
-
-                            docker stop ${CONTAINER_NAME} || true
-                            docker rm ${CONTAINER_NAME} || true
-
-                            docker run -d \
-                                --name ${CONTAINER_NAME} \
-                                --restart unless-stopped \
-                                -p ${HOST_PORT}:${INTERNAL_PORT} \
-                                -e DATABASE_URL="${DATABASE_URL}" \
-                                -e JWT_SECRET="${JWT_SECRET}" \
-                                -e PORT="${INTERNAL_PORT}" \
-                                -e CLIENT_BASE_URL="${CLIENT_BASE_URL}" \
-                                -e ADMIN_BASE_URL="${ADMIN_BASE_URL}" \
-                                ${DOCKER_IMAGE}:latest
-
-                            echo "Deployment done → http://${SERVER_HOST}:${HOST_PORT}"
-                        EOF
-                    """
-                }
+                sh """
+                    docker run -d \
+                        --name ${CONTAINER_NAME} \
+                        --restart unless-stopped \
+                        --env-file .env \
+                        -p ${HOST_PORT}:${INTERNAL_PORT} \
+                        ${IMAGE_NAME}:latest
+                """
+                echo "✅ Container ${CONTAINER_NAME} started on port ${HOST_PORT}"
+                echo "API should be available at: http://${SERVER_HOST}:${HOST_PORT}"
             }
         }
     }
 
     post {
         always {
-            sh 'docker logout || true'
+            // Clean workspace to avoid disk space issues
+            cleanWs()
+            echo '🧹 Workspace cleaned'
         }
         success {
-            echo "Deployment successful - ${DOCKER_IMAGE}:${DOCKER_TAG}"
+            echo "🎉 Pipeline completed successfully! Build #${BUILD_NUMBER}"
         }
         failure {
-            echo "Deployment failed"
+            echo '❌ Pipeline failed - check logs above'
         }
     }
 }
