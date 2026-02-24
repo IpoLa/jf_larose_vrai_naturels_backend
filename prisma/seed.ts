@@ -13,6 +13,7 @@ const PRODUCTS_DATA = [
     whyItWorks: 'Zéro effet de premier passage hépatique ou gastrique, évitant ainsi les brûlures d\'estomac et les médicaments supplémentaires.',
     sortOrder: 1,
   },
+
   {
     name: 'AMPUKU',
     slug: 'ampuku',
