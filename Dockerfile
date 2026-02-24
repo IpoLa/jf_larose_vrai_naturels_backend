@@ -1,26 +1,27 @@
-FROM node:20-alpine
+# Use Debian slim — avoids Alpine/OpenSSL/Prisma compatibility hell
+FROM node:20-slim
 
-# Install OpenSSL 1.1 (required by Prisma 5) + netcat for entrypoint
-RUN apk add --no-cache \
+# Install OpenSSL + netcat (Debian has openssl 3.x which Prisma 5 supports natively)
+RUN apt-get update && apt-get install -y \
     openssl \
-    libc6-compat \
     netcat-openbsd \
-    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/v3.16/main \
-    openssl1.1-compat 2>/dev/null || true
-
-ENV OPENSSL_CONF=/dev/null
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY package*.json ./
 COPY prisma ./prisma/
 
+# Install all deps
 RUN npm ci
 
+# Generate Prisma client (debian-openssl-3.0.x — already in binaryTargets)
 RUN npx prisma generate
 
+# Copy source
 COPY . .
 
+# Build NestJS app
 RUN npm run build
 
 # Compile seed.ts → dist/prisma/seed.js
@@ -32,10 +33,12 @@ RUN node_modules/.bin/tsc prisma/seed.ts \
         --target es2017 \
         --skipLibCheck \
         --resolveJsonModule 2>&1 \
-    && echo "✅ seed compiled" \
-    || echo "⚠️ seed compile warning"
+    && echo "✅ seed.ts → dist/prisma/seed.js compiled OK" \
+    || echo "⚠️  seed compile had warnings (may be OK)"
 
-RUN ls -la dist/prisma/ || echo "❌ dist/prisma missing"
+# Verify
+RUN ls -la dist/prisma/seed.js && echo "✅ seed.js exists" || echo "❌ seed.js MISSING"
+RUN ls -la dist/main.js && echo "✅ main.js exists" || echo "❌ main.js MISSING"
 
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh

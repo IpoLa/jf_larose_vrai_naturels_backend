@@ -3,64 +3,61 @@ set -e
 
 echo "🚀 Starting Les Vrais Naturels Backend..."
 
-# ── Verify DATABASE_URL ───────────────────────────────────────────────────────
 if [ -z "$DATABASE_URL" ]; then
-  echo "❌ ERROR: DATABASE_URL is not set!"
+  echo "❌ ERROR: DATABASE_URL not set"
   exit 1
 fi
-echo "✅ DATABASE_URL is set"
+echo "✅ DATABASE_URL: $DATABASE_URL"
 
-# ── Extract host and port from DATABASE_URL ───────────────────────────────────
-# Format: mysql://user:pass@host:port/dbname
-DB_HOST=$(echo "$DATABASE_URL" | sed 's/.*@\([^:]*\):.*/\1/')
-DB_PORT=$(echo "$DATABASE_URL" | sed 's/.*:\([0-9]*\)\/.*/\1/')
-
+# Parse host and port
+DB_HOST=$(echo "$DATABASE_URL" | sed 's|.*@\([^:]*\):.*|\1|')
+DB_PORT=$(echo "$DATABASE_URL" | sed 's|.*:\([0-9]*\)/.*|\1|')
 echo "⏳ Waiting for MySQL at $DB_HOST:$DB_PORT..."
 
-max_attempts=40
 attempt=1
-while [ $attempt -le $max_attempts ]; do
+while [ $attempt -le 40 ]; do
   if nc -z "$DB_HOST" "$DB_PORT" 2>/dev/null; then
-    echo "✅ MySQL port is open!"
+    echo "✅ MySQL is reachable!"
     break
   fi
-  echo "   [$attempt/$max_attempts] MySQL not ready, waiting 3s..."
+  echo "   [$attempt/40] Not ready yet, waiting 3s..."
   sleep 3
   attempt=$((attempt + 1))
 done
 
-if [ $attempt -gt $max_attempts ]; then
-  echo "❌ MySQL not reachable after $max_attempts attempts"
+if [ $attempt -gt 40 ]; then
+  echo "❌ MySQL never became reachable"
   exit 1
 fi
 
-# Extra buffer for MySQL to finish init
+# Extra buffer for MySQL init
+echo "⏳ Giving MySQL 5s extra to finish init..."
 sleep 5
 
 # ── Prisma Migrate ────────────────────────────────────────────────────────────
-echo "📦 Running Prisma migrations..."
-attempt=1
-while [ $attempt -le 5 ]; do
-  if npx prisma migrate deploy; then
-    echo "✅ Migrations done"
+echo "📦 Running prisma migrate deploy..."
+m_attempt=1
+while [ $m_attempt -le 5 ]; do
+  if npx prisma migrate deploy 2>&1; then
+    echo "✅ Migrations applied"
     break
   fi
-  echo "⚠️ Migration attempt $attempt failed, retrying in 5s..."
+  echo "⚠️  Migration attempt $m_attempt/5 failed, retrying in 5s..."
   sleep 5
-  attempt=$((attempt + 1))
+  m_attempt=$((m_attempt + 1))
 done
 
 # ── Seed ──────────────────────────────────────────────────────────────────────
 if [ "$SEED_ON_START" = "true" ]; then
-  echo "🌱 Running seed..."
+  echo "🌱 Running seed (node dist/prisma/seed.js)..."
   sleep 2
-  if node dist/prisma/seed.js; then
-    echo "✅ Seed done"
+  if node dist/prisma/seed.js 2>&1; then
+    echo "✅ Seed completed"
   else
-    echo "⚠️ Seed failed (non-critical, continuing...)"
+    echo "⚠️  Seed failed (non-critical, app will still start)"
   fi
 fi
 
-# ── Start App ─────────────────────────────────────────────────────────────────
-echo "🎯 Starting NestJS..."
+# ── Start NestJS ──────────────────────────────────────────────────────────────
+echo "🎯 Starting NestJS app..."
 exec node dist/main.js
