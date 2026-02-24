@@ -34,11 +34,9 @@ pipeline {
     }
 
     stages {
-        stage('📥 Pull from GitHub') {
+        stage('Checkout') {
             steps {
-                git url: 'https://github.com/sadeeminformatique/jf_larose_vrai_naturel_backend.git',
-                    branch: 'main',   // ← change to 'dev' if needed
-                    credentialsId: 'github-token-readonly'  // ← your PAT credential ID
+                checkout scm
             }
         }
 
