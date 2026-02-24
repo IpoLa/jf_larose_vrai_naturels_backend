@@ -97,17 +97,18 @@ pipeline {
             }
         }
 
-        stage('🚀 Start New Container') {
+        stage('🚀 Run New Container') {
             steps {
                 sh """
                     docker run -d \
                         --name ${CONTAINER_NAME} \
                         --restart unless-stopped \
+                        --network host \
                         --env-file .env \
                         -p ${HOST_PORT}:${INTERNAL_PORT} \
                         ${IMAGE_NAME}:latest
                 """
-                echo "✅ Container started → http://209.74.89.216:${HOST_PORT}"
+                echo "✅ Container started with host network → http://209.74.89.216:${HOST_PORT}"
             }
         }
     }
