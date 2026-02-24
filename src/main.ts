@@ -1,10 +1,17 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import {Logger, ValidationPipe} from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-
+import cookieParser from 'cookie-parser'
+s
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, {
+        logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+    });
+
+    app.useLogger(new Logger());
+
+    app.use(cookieParser());
 
     const allowedOrigins = process.env.ALLOWED_ORIGINS
         ? process.env.ALLOWED_ORIGINS.split(',')
@@ -18,12 +25,15 @@ async function bootstrap() {
             'https://jflarose-admin.sensinglabo.com',
         ];
 
+
     app.enableCors({
         origin: allowedOrigins,
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization', 'x-card-number', 'Accept'],
     });
+
+    app.getHttpAdapter().getInstance().set('trust proxy', 1);
 
     // CSP améliorée pour permettre plus de ressources
     if (process.env.NODE_ENV === 'development') {
