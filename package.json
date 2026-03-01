@@ -2,10 +2,10 @@
   "name": "les-vrais-naturels-backend",
   "version": "1.0.0",
   "description": "Backend API - Les Vrais Naturels - JF Larose",
-  "main": "dist/main.js",
+  "main": "app.js",
   "scripts": {
     "build": "nest build",
-    "start": "node dist/main.js",
+    "start": "node app.js",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "prisma:generate": "prisma generate",
