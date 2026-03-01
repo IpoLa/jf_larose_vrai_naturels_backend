@@ -2,10 +2,11 @@
   "name": "les-vrais-naturels-backend",
   "version": "1.0.0",
   "description": "Backend API - Les Vrais Naturels - JF Larose",
-  "main": "app.js",
+  "main": "dist/main.js",
   "scripts": {
-    "build": "nest build",
-    "start": "node app.js",
+    "build": "prisma generate && nest build && npm run build:seed",
+    "build:seed": "tsc prisma/seed.ts --outDir dist/prisma --module commonjs --esModuleInterop --moduleResolution node --target es2017 --skipLibCheck 2>/dev/null || true",
+    "start": "node dist/main.js",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "prisma:generate": "prisma generate",
@@ -14,7 +15,7 @@
     "prisma:push": "prisma db push",
     "prisma:seed": "node dist/prisma/seed.js",
     "prisma:seed:dev": "ts-node prisma/seed.ts",
-    "postbuild": "tsc prisma/seed.ts --outDir dist/prisma --module commonjs --esModuleInterop --moduleResolution node --target es2017 --skipLibCheck 2>/dev/null || true"
+    "deploy:prepare": "npm run build && npm prune --omit=dev"
   },
   "prisma": {
     "seed": "node dist/prisma/seed.js"
