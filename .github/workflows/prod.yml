@@ -168,7 +168,7 @@ jobs:
           server-dir: /
 
           # Incremental deploy — only uploads changed files
-          dangerous-clean-slate: true
+          dangerous-clean-slate: false
           state-name: .ftp-deploy-backend-prod.json
 
           exclude: |
