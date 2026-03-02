@@ -40,7 +40,7 @@ jobs:
 
       # ─── 5. Build NestJS app ────────────────────────────────────────────────
       - name: Build NestJS
-        run: npx npm run build
+        run: npm run build
 
       # ─── 6. Compile seed file separately ────────────────────────────────────
       - name: Compile seed
