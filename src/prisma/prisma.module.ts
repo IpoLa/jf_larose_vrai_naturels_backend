@@ -1,4 +1,6 @@
+// src/prisma/prisma.module.ts (use new service)
 import { Module, Global } from '@nestjs/common';
+import { PrismaAdapterService } from './prisma-adapter.service';
 import { PrismaService } from './prisma.service';
 
 @Global()

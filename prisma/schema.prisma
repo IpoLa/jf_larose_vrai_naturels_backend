@@ -1,3 +1,6 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x", "rhel-openssl-3.0.x"]
@@ -5,7 +8,12 @@ generator client {
 
 datasource db {
   provider = "mysql"
-  url      = env("DATABASE_URL")
+//  url      = env("DATABASE_URL")
+  
+  
+  // Use MariaDB adapter for optimized performance on cPanel
+  // Install: npm install @prisma/adapter-mariadb
+  // Docs: https://www.prisma.io/docs/orm/overview/databases/mariadb
 }
 
 model AdminUser {
