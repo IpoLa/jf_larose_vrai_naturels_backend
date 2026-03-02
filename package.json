@@ -4,7 +4,7 @@
   "description": "Backend API - Les Vrais Naturels - JF Larose",
   "main": "dist/main.js",
   "scripts": {
-    "build": "prisma generate && npx nest build && npm run build:seed",
+    "build": "prisma generate && nest build && npm run build:seed",
     "build:seed": "npx tsc prisma/seed.ts --outDir dist/prisma --module commonjs --esModuleInterop --moduleResolution node --target es2017 --skipLibCheck 2>/dev/null || true",
     "start": "node dist/main.js",
     "start:dev": "npx nest start --watch",
@@ -42,7 +42,7 @@
     "uuid": "^9.0.0"
   },
   "devDependencies": {
-    "@nestjs/cli": "^10.0.0",
+    "@nestjs/cli": "^10.4.9",
     "@nestjs/testing": "^10.0.0",
     "@types/bcrypt": "^5.0.0",
     "@types/node": "^20.0.0",
