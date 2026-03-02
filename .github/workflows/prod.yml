@@ -39,6 +39,8 @@ jobs:
         run: npx prisma generate
 
       # ─── 5. Build NestJS app ────────────────────────────────────────────────
+      - name: Install NestJS
+        run: npm i -g install nest
       - name: Build NestJS
         run: npm run build
 
