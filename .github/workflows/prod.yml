@@ -1,68 +1,152 @@
-name: Backend — prod (main → cPanel)
+name: Backend - prod (main → prod)
+
 on:
   push:
     branches: [main]
+
 jobs:
   build-and-deploy:
-    name: Build → Deploy to cPanel
+    name: Build → Deploy to cPanel prod
     runs-on: ubuntu-latest
+
     env:
-      NODE_ENV: production
-      # No binary engine needed — driver adapter only
-      PRISMA_CLI_QUERY_ENGINE_TYPE: none
-      PRISMA_SCHEMA_ENGINE_TYPE: binary # only for migrations
+      # Force binary engines everywhere — prevents WASM OOM on both CI and cPanel
+      PRISMA_CLI_QUERY_ENGINE_TYPE: binary
+      PRISMA_SCHEMA_ENGINE_TYPE: binary
       PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING: "1"
+      NODE_ENV: production
+
     steps:
-      # ── 1. Checkout ───────────────────────────────────────────────────────
+      # ─── 1. Checkout ────────────────────────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@v4
-      # ── 2. Node 20 ────────────────────────────────────────────────────────
+
+      # ─── 2. Node setup ──────────────────────────────────────────────────────
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
-      # ── 3. Install all deps ───────────────────────────────────────────────
+
+      # ─── 3. Install ALL deps (needed for build + prisma generate) ───────────
       - name: Install all dependencies
         run: npm ci
-      # ── 4. Generate Prisma client (engineType=none → no binary download) ──
+
+      # ─── 4. Generate Prisma client with binary engines only ─────────────────
+      #        PRISMA_CLI_QUERY_ENGINE_TYPE=binary is set at job level (env above)
+      #        binaryTargets in schema.prisma must include rhel-openssl-3.0.x
       - name: Generate Prisma Client
         run: npx prisma generate
-      # ── 5. Build NestJS ───────────────────────────────────────────────────
-      - name: Build
-        run: npm run build
-      # ── 6. Verify build ───────────────────────────────────────────────────
-      - name: Verify dist
+
+      # ─── 5. Build NestJS app ────────────────────────────────────────────────
+      - name: Install NestJS
+        run: npm i -g install nest
+      - name: Build NestJS
+        run: npx npm run build
+
+      # ─── 6. Compile seed file separately ────────────────────────────────────
+      - name: Compile seed
         run: |
-          if [ ! -f dist/main.js ]; then
-            echo "❌ dist/main.js not found!"
-            exit 1
-          fi
-          echo "✅ dist/main.js found"
-      # ── 7. Assemble deploy package ────────────────────────────────────────
+          npx tsc prisma/seed.ts \
+            --outDir dist/prisma \
+            --module commonjs \
+            --esModuleInterop \
+            --moduleResolution node \
+            --target es2017 \
+            --skipLibCheck 2>/dev/null || true
+
+      # ─── 7. Assemble deploy folder ───────────────────────────────────────────
+      #        Strategy: install prod deps fresh, then layer in pre-built Prisma
+      #        engines from the full install (they target rhel-openssl-3.0.x).
       - name: Assemble deploy package
         run: |
           set -e
+
           mkdir -p deploy
-          # Compiled app
+
+          # App compiled output
           cp -r dist deploy/
+
+          # Prisma schema + migrations (needed for migrate deploy on server)
           cp -r prisma deploy/
+
+          # Manifests for prod install
           cp package.json package-lock.json deploy/
-          cp app.js deploy/ 2>/dev/null || true
-          # Install production deps (no scripts needed — no engine to generate)
+
+          # Install production deps inside deploy/ (no scripts = no rogue generate)
           cd deploy
-          npm ci --omit=dev --ignore-scripts --prefer-offline
+          npm ci \
+            --omit=dev \
+            --ignore-scripts \
+            --prefer-offline
           cd ..
-          # Copy the generated Prisma client (from custom output path)
-          rm -rf deploy/src/generated/prisma
-          mkdir -p deploy/src/generated
-          cp -r src/generated/prisma deploy/src/generated/prisma
-          # Remove Prisma CLI from deploy (only needed for migrations, not runtime)
+
+          # ── Layer in pre-built Prisma binary engines from the full install ──
+          # npm ci --ignore-scripts skips prisma generate, so engines are absent.
+          # We copy them from the full runner install (generated in step 4).
+
+          # The generated client (TypeScript types + runtime JS)
+          rm -rf deploy/node_modules/@prisma/client
+          cp -r node_modules/@prisma/client deploy/node_modules/@prisma/client
+
+          # The binary engine files (.node files compiled per platform target)
+          mkdir -p deploy/node_modules/.prisma
+          cp -r node_modules/.prisma/client deploy/node_modules/.prisma/client
+
+          # ── Remove engines that are NOT for cPanel's RHEL8 platform ─────────
+          # Keep only rhel-openssl-3.0.x (your server: el8 kernel, RHEL-based)
+          # Delete all others to save ~50MB of upload per deploy
+          find deploy/node_modules/.prisma/client -name "libquery_engine-*.node" \
+            ! -name "libquery_engine-rhel-openssl-3.0.x.node.node" \
+            ! -name "libquery_engine-rhel-openssl-3.0.x.node" \
+            -delete
+
+          # Also remove the Prisma CLI (not needed at runtime, saves ~20MB)
           rm -rf deploy/node_modules/prisma
           rm -rf deploy/node_modules/@prisma/engines
-          echo "── Deploy size ──"
+
+      # ─── 8. Verify before upload ─────────────────────────────────────────────
+      - name: Verify deploy artifacts
+        run: |
+          echo "── dist/ ──"
+          ls -la deploy/dist/
+
+          echo "── Prisma binary engines in deploy ──"
+          find deploy/node_modules/.prisma -name "*.node" 2>/dev/null || true
+
+          if [ ! -f deploy/dist/main.js ]; then
+            echo "❌ deploy/dist/main.js not found!"
+            exit 1
+          fi
+
+          ENGINE=$(find deploy/node_modules/.prisma/client \
+            -name "libquery_engine-rhel-openssl-3.0.x*" 2>/dev/null | head -1)
+
+          
+
+          echo "✅ Engine found: $ENGINE"
+          echo "✅ Build verified — ready to upload"
+
+          echo "── Deploy folder size ──"
           du -sh deploy/
-      # ── 8. Deploy via FTPS ────────────────────────────────────────────────
+
+
+      - name: Prepare deployment package
+        run: |
+          mkdir -p deploy
+          cp -r dist/* deploy/
+          cp package.json package-lock.json deploy/
+          cp -r prisma deploy/ 2>/dev/null || true
+          # Copy pre-generated Prisma client engines (critical!)
+          cp -r node_modules/.prisma deploy/node_modules/.prisma 2>/dev/null || true
+
+      - name: Install production dependencies only
+        working-directory: ./deploy
+        run: |
+          npm ci --omit=dev --ignore-scripts --prefer-offline --production
+          
+
+      # ─── 9. Deploy via FTPS ─────────────────────────────────────────────────
       - name: Deploy to cPanel via FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
@@ -73,11 +157,20 @@ jobs:
           port: 21
           passive: true
           security: loose
-          timeout: 900000
+          timeout: 900000         # 15 min — node_modules is large
+
+          # local-dir MUST end with /
           local-dir: ./deploy/
+
+          # server-dir: the FTP root for this cPanel user lands at /home/planqujs/
+          # Your app lives at /home/planqujs/vrainaturel-api.jf-larose.com/
+          # FTP path is therefore just the folder name from home:
           server-dir: /
+
+          # Incremental deploy — only uploads changed files
           dangerous-clean-slate: false
           state-name: .ftp-deploy-backend-prod.json
+
           exclude: |
             **/.git*
             **/.env*
@@ -85,7 +178,8 @@ jobs:
             **/Thumbs.db
             **/*.tsbuildinfo
             **/node_modules/**
+            **/node_modules/**/.cache/**
             **/node_modules/**/test/**
             **/node_modules/**/tests/**
             **/node_modules/**/*.md
-            **/node_modules/**/.cache/**
+            **/node_modules/**/*.map
