@@ -4,7 +4,7 @@
   "description": "Backend API - Les Vrais Naturels - JF Larose",
   "main": "dist/main.js",
   "scripts": {
-    "build": "prisma generate && npx nest build && npx npm run build:seed",
+    "build": "prisma generate && tsc --build tsconfig.build.json && npm run build:seed",
     "build:seed": "npx tsc prisma/seed.ts --outDir dist/prisma --module commonjs --esModuleInterop --moduleResolution node --target es2017 --skipLibCheck 2>/dev/null || true",
     "start": "node dist/main.js",
     "start:dev": "npx nest start --watch",
