@@ -161,6 +161,7 @@ jobs:
             **/.DS_Store
             **/Thumbs.db
             **/*.tsbuildinfo
+            **/node_modules/**
             **/node_modules/**/.cache/**
             **/node_modules/**/test/**
             **/node_modules/**/tests/**
