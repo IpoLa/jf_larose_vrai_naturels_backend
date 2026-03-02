@@ -139,6 +139,7 @@ jobs:
           cp -r prisma deploy/ 2>/dev/null || true
           # Copy pre-generated Prisma client engines (critical!)
           cp -r node_modules/.prisma deploy/node_modules/.prisma 2>/dev/null || true
+          cp -r node_modules/@prisma deploy/node_modules/@prisma 2>/dev/null || true
 
       - name: Install production dependencies only
         working-directory: ./deploy
