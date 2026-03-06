@@ -22,7 +22,7 @@ services:
       start_period: 60s
 
   backend:
-    image: les-vrais-naturels-backend:latest
+    image: jf-les-vrais-naturels-backend:latest
     container_name: jf-les-vrais-naturels-backend
     restart: unless-stopped
     env_file:
