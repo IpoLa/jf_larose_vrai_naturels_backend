@@ -1,7 +1,83 @@
 import { PrismaClient } from '@prisma/client';
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
+import { existsSync } from 'node:fs';
 import * as bcrypt from 'bcrypt';
 
+function readFirstDefined(...values: Array<string | undefined>): string | undefined {
+  for (const value of values) {
+    if (!value) continue;
+    const trimmed = value.trim();
+    if (trimmed.length > 0) return trimmed;
+  }
+  return undefined;
+}
+
+function toPositiveInt(value: string | undefined, fallback: number): number {
+  if (!value) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed;
+}
+
+function resolveSeedDatabaseConfig(env: NodeJS.ProcessEnv) {
+  const isRunningInDocker = existsSync('/.dockerenv');
+  const internalAliases = new Set(['db', 'mysql', 'mariadb']);
+
+  let parsed:
+    | { host?: string; port?: string; user?: string; password?: string; database?: string }
+    | undefined;
+
+  if (env.DATABASE_URL) {
+    const url = new URL(env.DATABASE_URL);
+    parsed = {
+      host: url.hostname || undefined,
+      port: url.port || undefined,
+      user: url.username || undefined,
+      password: url.password || undefined,
+      database: url.pathname.replace(/^\//, '') || undefined,
+    };
+  }
+
+  let host = readFirstDefined(env.DATABASE_HOST_OVERRIDE, env.DB_HOST, parsed?.host) ?? '127.0.0.1';
+  if (!isRunningInDocker && !env.DATABASE_HOST_OVERRIDE && internalAliases.has(host)) {
+    host = '127.0.0.1';
+  }
+
+  const port = toPositiveInt(
+    readFirstDefined(env.DB_PORT, parsed?.port, !isRunningInDocker ? env.DB_HOST_PORT : undefined),
+    3306,
+  );
+  const user = readFirstDefined(env.DB_USER, env.DB_USERNAME, parsed?.user);
+  const password = readFirstDefined(env.DB_PASSWORD, parsed?.password);
+  const database = readFirstDefined(env.DB_NAME, env.DB_DATABASE, parsed?.database);
+  const connectionLimit = toPositiveInt(env.DB_CONNECTION_LIMIT, 10);
+
+  const missing: string[] = [];
+  if (!user) missing.push('DB_USER or DB_USERNAME');
+  if (!password) missing.push('DB_PASSWORD');
+  if (!database) missing.push('DB_NAME or DB_DATABASE');
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing DB config for seed: ${missing.join(', ')}. Provide DATABASE_URL or DB_* variables.`,
+    );
+  }
+
+  return { host, port, user, password, database, connectionLimit };
+}
+
+const db = resolveSeedDatabaseConfig(process.env);
 const prisma = new PrismaClient({
+  adapter: new PrismaMariaDb({
+    host: db.host,
+    port: db.port,
+    user: db.user,
+    password: db.password,
+    database: db.database,
+    connectionLimit: db.connectionLimit,
+    acquireTimeout: 60000,
+    idleTimeout: 30000,
+  }),
   log: ['error', 'warn'],
 });
 

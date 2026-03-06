@@ -5,7 +5,7 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "prisma generate && tsc --build tsconfig.build.json && npm run build:seed",
-    "build:seed": "npx tsc prisma/seed.ts --outDir dist/prisma --module commonjs --esModuleInterop --moduleResolution node --target ES2023 --skipLibCheck 2>/dev/null || true",
+    "build:seed": "npx tsc prisma/seed.ts --outDir dist/prisma --module commonjs --esModuleInterop --moduleResolution node --target ES2023 --skipLibCheck",
     "start": "node dist/main.js",
     "start:dev": "npx nest start --watch",
     "start:debug": "npx nest start --debug --watch",

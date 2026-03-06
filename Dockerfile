@@ -33,8 +33,7 @@ RUN node_modules/.bin/tsc prisma/seed.ts \
         --target es2017 \
         --skipLibCheck \
         --resolveJsonModule 2>&1 \
-    && echo "✅ seed.ts → dist/prisma/seed.js compiled OK" \
-    || echo "⚠️  seed compile had warnings (may be OK)"
+    && echo "✅ seed.ts → dist/prisma/seed.js compiled OK"
 
 # Verify
 RUN ls -la dist/prisma/seed.js && echo "✅ seed.js exists" || echo "❌ seed.js MISSING"

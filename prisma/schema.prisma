@@ -10,7 +10,7 @@ generator client {
 
 datasource db {
   provider = "mysql"
-  //  url      = env("DATABASE_URL")
+  // URL is configured in prisma.config.ts (Prisma 7+)
 
   // Use MariaDB adapter for optimized performance on cPanel
   // Install: npm install @prisma/adapter-mariadb

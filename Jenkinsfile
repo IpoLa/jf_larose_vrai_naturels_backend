@@ -56,8 +56,8 @@ DATABASE_URL=mysql://jflarose:StrongPass123!@db:3306/les_vrais_naturels
 JWT_SECRET=jf-larose-les-vrais-naturels-super-secret-2026
 CLIENT_BASE_URL=https://vrainaturel.jf-larose.com
 ADMIN_BASE_URL=https://vrainaturel-backoffice.jf-larose.com
-ALLOWED_ORIGINS=https://vrainaturel-backoffice.jf-larose.com,https://vrainaturel.jf-larose.com,https://jflarose-backoffice.sensinglabo.com,https://jflarose-client.sensinglabo.com,http://localhost:3000,http://localhost:5173,http://192.168.1.6:3000,http://192.168.1.4:3000,http://192.168.1.4:8081
-SEED_ON_START=true
+ALLOWED_ORIGINS=https://vrainaturel-backoffice.jf-larose.com,https://vrainaturel.jf-larose.com,https://jflarose-backoffice.sensinglabo.com,https://jflarose-client.sensinglabo.com,http://localhost:3000
+SEED_ON_START=false
 ENVEOF
                     echo "✅ .env generated"
                     echo "--- .env preview (no secrets) ---"
