@@ -23,7 +23,7 @@ services:
 
   backend:
     image: les-vrais-naturels-backend:latest
-    container_name: les-vrais-naturels-backend
+    container_name: jf-les-vrais-naturels-backend
     restart: unless-stopped
     env_file:
       - .env
