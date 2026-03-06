@@ -25,7 +25,7 @@ pipeline {
         // Seed on container start
         SEED_ON_START       = 'false'
 
-        IMAGE_NAME          = 'les-vrais-naturels-backend'
+        IMAGE_NAME          = 'jf-les-vrais-naturels-backend'
     }
 
     stages {
