@@ -4,14 +4,13 @@
 generator client {
   provider        = "prisma-client-js"
   // output          = "../src/generated/prisma"
-  previewFeatures = ["driverAdapters"]   // ← enables driver adapter API
-  engineType      = "none"
+  // previewFeatures = ["driverAdapters"] // ← enables driver adapter API
+  engineType      = "library"
 }
 
 datasource db {
   provider = "mysql"
-//  url      = env("DATABASE_URL")
-  
+  //  url      = env("DATABASE_URL")
 
   // Use MariaDB adapter for optimized performance on cPanel
   // Install: npm install @prisma/adapter-mariadb
@@ -40,14 +39,14 @@ model Pharmacy {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  vendors   Vendor[]
+  vendors Vendor[]
 
   @@map("pharmacies")
 }
 
 model Vendor {
-  id                String          @id @default(uuid())
-  uniqueCardNumber  String          @unique
+  id                String   @id @default(uuid())
+  uniqueCardNumber  String   @unique
   name              String?
   email             String?
   phone             String?
@@ -55,17 +54,17 @@ model Vendor {
   ccpKey            String?
   rip               String?
   pharmacyId        String?
-  status            String          @default("active")
-  actionDate        DateTime        @default(now())
-  registrationBonus Boolean         @default(false)
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  status            String   @default("active")
+  actionDate        DateTime @default(now())
+  registrationBonus Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  pharmacy          Pharmacy?       @relation(fields: [pharmacyId], references: [id])
-  sales             Sale[]
-  paymentPeriods    PaymentPeriod[]
-  qrCodes           QrCode[]
-  notifications     VendorNotification[]
+  pharmacy       Pharmacy?            @relation(fields: [pharmacyId], references: [id])
+  sales          Sale[]
+  paymentPeriods PaymentPeriod[]
+  qrCodes        QrCode[]
+  notifications  VendorNotification[]
 
   @@map("vendors")
 }
@@ -82,8 +81,8 @@ model Delegue {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  qrCodes          DelegueQrCode[]
-  notifications    DelegueNotification[]
+  qrCodes       DelegueQrCode[]
+  notifications DelegueNotification[]
 
   @@map("delegues")
 }
@@ -97,7 +96,7 @@ model DelegueQrCode {
   generatedAt DateTime @default(now())
   isActive    Boolean  @default(true)
 
-  delegue     Delegue  @relation(fields: [delegueId], references: [id])
+  delegue Delegue @relation(fields: [delegueId], references: [id])
 
   @@map("delegue_qr_codes")
 }
@@ -116,26 +115,26 @@ model Product {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  sales       Sale[]
+  sales Sale[]
 
   @@map("products")
 }
 
 model Sale {
-  id          String    @id @default(uuid())
+  id          String   @id @default(uuid())
   vendorId    String
   productId   String?
   productName String
   quantity    Int
-  unitPrice   Float     @default(0)
-  saleDate    DateTime  @default(now())
+  unitPrice   Float    @default(0)
+  saleDate    DateTime @default(now())
   periodId    String?
 
-  vendor      Vendor         @relation(fields: [vendorId], references: [id])
-  product     Product?       @relation(fields: [productId], references: [id])
-  period      PaymentPeriod? @relation(fields: [periodId], references: [id])
+  vendor  Vendor         @relation(fields: [vendorId], references: [id])
+  product Product?       @relation(fields: [productId], references: [id])
+  period  PaymentPeriod? @relation(fields: [periodId], references: [id])
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@map("sales")
 }
@@ -153,8 +152,8 @@ model PaymentPeriod {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  vendor          Vendor    @relation(fields: [vendorId], references: [id])
-  sales           Sale[]
+  vendor Vendor @relation(fields: [vendorId], references: [id])
+  sales  Sale[]
 
   @@map("payment_periods")
 }
@@ -183,18 +182,18 @@ model QrCode {
   generatedAt DateTime @default(now())
   isActive    Boolean  @default(true)
 
-  vendor      Vendor   @relation(fields: [vendorId], references: [id])
+  vendor Vendor @relation(fields: [vendorId], references: [id])
 
   @@map("qr_codes")
 }
 
 model Notification {
-  id          String               @id @default(uuid())
-  title       String
-  message     String
-  type        String               @default("info")
-  targetType  String               @default("all")
-  createdAt   DateTime             @default(now())
+  id         String   @id @default(uuid())
+  title      String
+  message    String
+  type       String   @default("info")
+  targetType String   @default("all")
+  createdAt  DateTime @default(now())
 
   vendorNotifications  VendorNotification[]
   delegueNotifications DelegueNotification[]
@@ -203,28 +202,28 @@ model Notification {
 }
 
 model VendorNotification {
-  id             String       @id @default(uuid())
+  id             String    @id @default(uuid())
   notificationId String
   vendorId       String
-  isRead         Boolean      @default(false)
+  isRead         Boolean   @default(false)
   readAt         DateTime?
 
-  notification   Notification @relation(fields: [notificationId], references: [id])
-  vendor         Vendor       @relation(fields: [vendorId], references: [id])
+  notification Notification @relation(fields: [notificationId], references: [id])
+  vendor       Vendor       @relation(fields: [vendorId], references: [id])
 
   @@unique([notificationId, vendorId])
   @@map("vendor_notifications")
 }
 
 model DelegueNotification {
-  id             String       @id @default(uuid())
+  id             String    @id @default(uuid())
   notificationId String
   delegueId      String
-  isRead         Boolean      @default(false)
+  isRead         Boolean   @default(false)
   readAt         DateTime?
 
-  notification   Notification @relation(fields: [notificationId], references: [id])
-  delegue        Delegue      @relation(fields: [delegueId], references: [id])
+  notification Notification @relation(fields: [notificationId], references: [id])
+  delegue      Delegue      @relation(fields: [delegueId], references: [id])
 
   @@unique([notificationId, delegueId])
   @@map("delegue_notifications")

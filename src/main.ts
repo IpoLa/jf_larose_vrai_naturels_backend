@@ -4,7 +4,82 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 
+function normalizeOrigin(origin: string): string {
+    try {
+        const parsed = new URL(origin);
+        const host = parsed.hostname.toLowerCase();
+        return `${parsed.protocol}//${host}${parsed.port ? `:${parsed.port}` : ''}`.replace(/\/+$/, '');
+    } catch {
+        return origin.trim().toLowerCase().replace(/\/+$/, '');
+    }
+}
+
+function withLocalhostVariants(origin: string): string[] {
+    try {
+        const parsed = new URL(origin);
+        if (parsed.hostname === 'localhost') {
+            return [origin, `${parsed.protocol}//127.0.0.1${parsed.port ? `:${parsed.port}` : ''}`];
+        }
+        if (parsed.hostname === '127.0.0.1') {
+            return [origin, `${parsed.protocol}//localhost${parsed.port ? `:${parsed.port}` : ''}`];
+        }
+        return [origin];
+    } catch {
+        return [origin];
+    }
+}
+
+function parseOrigins(raw?: string): string[] {
+    if (!raw) return [];
+    return raw
+        .split(/[,\n;]/)
+        .map((origin) => origin.trim())
+        .map((origin) => origin.replace(/^['"]+|['"]+$/g, ''))
+        .filter(Boolean);
+}
+
+function buildAllowedOrigins(): string[] {
+    const defaults = [
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'http://192.168.1.6:3000',
+        'http://192.168.1.4:3000',
+        'http://192.168.1.4:8081',
+        'https://jflarose-client.sensinglabo.com',
+        'https://jflarose-backoffice.sensinglabo.com',
+        'https://vrainaturel.jf-larose.com',
+        'https://vrainaturel-backoffice.jf-larose.com',
+        'https://vrainaturel-api.sadeempro.xyz',
+    ];
+
+    const configured = parseOrigins(process.env.ALLOWED_ORIGINS);
+    const baseOrigins = configured.length > 0 ? configured : defaults;
+
+    const augmented = [
+        ...baseOrigins,
+        process.env.CLIENT_BASE_URL ?? '',
+        process.env.ADMIN_BASE_URL ?? '',
+    ].filter(Boolean);
+
+    return Array.from(
+        new Set(
+            augmented
+                .flatMap((origin) => withLocalhostVariants(origin))
+                .map((origin) => normalizeOrigin(origin)),
+        ),
+    );
+}
+
+function resolvePort(): number {
+    const parsed = Number.parseInt(process.env.PORT ?? '', 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+        return parsed;
+    }
+    return 3000;
+}
+
 async function bootstrap() {
+    const bootstrapLogger = new Logger('Bootstrap');
     const app = await NestFactory.create(AppModule, {
         logger: ['error', 'warn', 'log', 'debug', 'verbose'],
     });
@@ -13,27 +88,25 @@ async function bootstrap() {
     app.use(cookieParser());
 
     // ── CORS ──────────────────────────────────────────────────────────────────
-    const allowedOrigins = process.env.ALLOWED_ORIGINS
-        ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
-        : [
-            'http://localhost:3000',
-            'http://localhost:5173',
-            'http://192.168.1.6:3000',
-            'http://192.168.1.4:3000',
-            'http://192.168.1.4:8081',
-            'https://jflarose-client.sensinglabo.com',
-            'https://jflarose-backoffice.sensinglabo.com',
-            'https://vrainaturel.jf-larose.com',
-            'https://vrainaturel-backoffice.jf-larose.com',
-            'https://vrainaturel-api.sadeempro.xyz',
-        ];
+    const allowedOrigins = buildAllowedOrigins();
+    const allowedOriginsSet = new Set(allowedOrigins);
+    const corsAllowAll = process.env.CORS_ALLOW_ALL === 'true';
+    const blockedOriginsSeen = new Set<string>();
 
     app.enableCors({
         origin: (origin, callback) => {
             // Allow requests with no origin (mobile apps, curl, Postman)
             if (!origin) return callback(null, true);
-            if (allowedOrigins.includes(origin)) return callback(null, true);
-            callback(new Error(`CORS blocked: ${origin}`));
+            if (corsAllowAll) return callback(null, true);
+            const normalizedOrigin = normalizeOrigin(origin);
+            if (allowedOriginsSet.has(normalizedOrigin)) return callback(null, true);
+
+            // Soft deny: do not throw app-level errors for blocked browser origins.
+            if (!blockedOriginsSeen.has(normalizedOrigin)) {
+                blockedOriginsSeen.add(normalizedOrigin);
+                bootstrapLogger.warn(`CORS blocked origin: ${origin}`);
+            }
+            callback(null, false);
         },
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -110,17 +183,17 @@ async function bootstrap() {
         customSiteTitle: 'Les Vrais Naturels - API Docs',
     });
 
-    // ── IMPORTANT: always listen on 3000 internally, Docker maps PORT→3000 ──
-    const port = 3000;
+    const port = resolvePort();
     await app.listen(port, '0.0.0.0');
 
-    console.log(`🚀 Application démarrée sur: http://localhost:${port}`);
-    console.log(`📚 Swagger: http://localhost:${port}/api/docs`);
+    bootstrapLogger.log(`Application demarree sur: http://localhost:${port}`);
+    bootstrapLogger.log(`Swagger: http://localhost:${port}/api/docs`);
     if (isProduction) {
-        console.log(`📚 Production Swagger: https://vrainaturel-api.sadeempro.xyz/api/docs`);
+        bootstrapLogger.log('Production Swagger: https://vrainaturel-api.sadeempro.xyz/api/docs');
     }
-    console.log(`🔓 CORS origins:`, allowedOrigins);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    bootstrapLogger.log(`CORS allowAll: ${corsAllowAll}`);
+    bootstrapLogger.log(`CORS origins: ${allowedOrigins.join(', ')}`);
+    bootstrapLogger.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 }
 
 bootstrap().catch((err) => {

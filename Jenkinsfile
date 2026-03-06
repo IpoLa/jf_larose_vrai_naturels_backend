@@ -23,7 +23,7 @@ pipeline {
         ALLOWED_ORIGINS     = 'https://vrainaturel-backoffice.jf-larose.com,https://vrainaturel.jf-larose.com,https://jflarose-backoffice.sensinglabo.com,https://jflarose-client.sensinglabo.com,http://localhost:3000,http://localhost:5173,http://192.168.1.6:3000,http://192.168.1.4:3000,http://192.168.1.4:8081'
 
         // Seed on container start
-        SEED_ON_START       = 'true'
+        SEED_ON_START       = 'false'
 
         IMAGE_NAME          = 'les-vrais-naturels-backend'
     }

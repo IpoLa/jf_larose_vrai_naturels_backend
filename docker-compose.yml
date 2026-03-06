@@ -28,7 +28,7 @@ services:
     env_file:
       - .env
     ports:
-      - "${PORT:-3200}:3000"
+      - "${PORT:-3200}:${PORT:-3200}"
     networks:
       - lvn-network
     depends_on:
